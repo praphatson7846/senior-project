@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PCS Material Test Report</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+  
+  <style>
+    .hidden-page { display: none !important; }
+    .report-table { width: 100%; border-collapse: collapse; }
+    .report-table th, .report-table td { border: 1px solid black; padding: 4px; font-size: 11px; }
+    .report-table th { text-align: center; font-weight: bold; background-color: #f9fafb; }
+    .report-table td.center { text-align: center; }
+    .input-highlight { width: 100%; background-color: #fef08a; text-align: center; border: 1px dashed transparent; outline: none; font-weight: bold; color: #b91c1c; transition: all 0.3s; }
+    .input-highlight:focus { border: 1px dashed #3b82f6; background-color: #fef9c3; }
+    .input-error { background-color: #fee2e2 !important; color: red !important; border: 1px dashed red !important; }
+    .empty-error { border: 2px dashed red !important; }
+    .form-layout-section { display: none; }
+    .form-layout-section.active { display: block; }
+    .print-header { display: none; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    @media print {
+      @page { size: A4; margin: 5mm; }
+      body, html { background-color: white !important; display: block !important; height: auto !important; }
+      main { display: block !important; padding: 0 !important; margin: 0 !important; }
+      .no-print { display: none !important; }
+      .shadow-xl, .shadow-lg { box-shadow: none !important; }
+      .container { max-width: 100% !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
+      .input-highlight { background-color: transparent !important; border: none !important; color: black !important;}
+      .input-error { background-color: transparent !important; color: red !important; font-weight: bold; }
+      .empty-error { background-color: transparent !important; border: none !important; }
+      #pageReport:not(.hidden-page), #pageChemistryTable:not(.hidden-page) { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+      .form-paper { border: none !important; margin: 0 !important; padding: 0 !important; width: 100% !important; zoom: 0.9; }
+      .print-header { display: block !important; text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col font-sans">
+
+  <header class="bg-blue-800 text-white p-4 shadow-md flex justify-between items-center no-print">
+    <h1 class="text-xl font-bold">PCS Machine (Thailand) - QC System</h1>
+    <span id="userDisplay" class="text-sm font-bold"></span>
+  </header>
+
+  <main class="flex-grow container mx-auto p-4 flex justify-center items-start pt-6">
+    
+    <div id="pageLogin" class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md no-print">
+      <h2 class="text-2xl font-bold mb-6 text-center text-blue-800">เข้าสู่ระบบ</h2>
+      <input id="username" type="text" placeholder="Username (admin)" class="mb-4 shadow border rounded w-full py-2 px-3 focus:ring-2 focus:ring-blue-500">
+      <div class="mb-6">
+        <input id="password" type="password" placeholder="Password (1234)" class="shadow border rounded w-full py-2 px-3 focus:ring-2 focus:ring-blue-500">
+        <div class="flex justify-end mt-2"><button onclick="handleForgotPassword()" class="text-sm text-blue-600 hover:text-blue-800 hover:underline transition">ลืมรหัสผ่าน?</button></div>
+      </div>
+      <button onclick="handleLogin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition">Login</button>
+    </div>
+
+    <div id="pageMenu" class="bg-white p-10 rounded-lg shadow-lg w-full max-w-4xl hidden-page no-print text-center">
+      <div class="flex flex-col md:flex-row justify-between items-center mb-8 border-b pb-4 gap-4">
+        <h2 id="menuTitle" class="text-2xl font-bold text-gray-800">เมนูการทำงานหลัก</h2>
+        <select id="langSelector" onchange="changeLanguage(this.value)" class="border rounded px-3 py-1.5 text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-sm font-medium">
+          <option value="th">🇹🇭 ภาษาไทย</option><option value="en">🇬🇧 English</option><option value="zh">🇨🇳 中文</option>
+        </select>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <button onclick="createNewReport()" class="bg-green-600 hover:bg-green-700 text-white p-6 rounded-lg shadow transition flex flex-col items-center">
+          <span class="text-3xl mb-2">📝</span><span id="menuBtn1" class="font-bold text-sm">สร้าง Report ใหม่</span>
+        </button>
+        <button onclick="openHistory()" class="bg-yellow-500 hover:bg-yellow-600 text-white p-6 rounded-lg shadow transition flex flex-col items-center">
+          <span class="text-3xl mb-2">🗂️</span><span id="menuBtn2" class="font-bold text-sm">ประวัติการบันทึก</span>
+        </button>
+        <button onclick="openSpcDashboard()" class="bg-indigo-600 hover:bg-indigo-700 text-white p-6 rounded-lg shadow transition flex flex-col items-center">
+          <span class="text-3xl mb-2">📊</span><span id="menuBtn3" class="font-bold text-sm">Dashboard</span>
+        </button>
+        <button onclick="openChemistryTable()" class="bg-cyan-600 hover:bg-cyan-700 text-white p-6 rounded-lg shadow transition flex flex-col items-center">
+          <span class="text-3xl mb-2">📋</span><span id="menuBtn4" class="font-bold text-sm">วิเคราะห์เคมี (Correlation & SPC)</span>
+        </button>
+        <button onclick="showPage('pageUpload')" class="col-span-1 md:col-span-2 lg:col-span-2 bg-pink-600 hover:bg-pink-700 text-white p-6 rounded-lg shadow transition flex flex-col items-center">
+          <span class="text-3xl mb-2">📥</span><span id="menuBtn5" class="font-bold text-lg">อัปโหลดไฟล์เคมี (CSV)</span>
+        </button>
+      </div>
+      <div class="mt-8 border-t pt-4"><button onclick="doLogout()" id="logoutBtn" class="text-gray-400 hover:text-red-500 underline text-sm">ออกจากระบบ</button></div>
+    </div>
+
+    <div id="pageSpc" class="bg-gray-50 p-4 sm:p-6 rounded-lg shadow w-full max-w-7xl hidden-page no-print flex flex-col h-[calc(100vh-4rem)]">
+      <div class="flex justify-between items-center mb-4 border-b pb-4 flex-shrink-0">
+        <h2 class="text-xl font-bold text-blue-900">แดชบอร์ด</h2>
+        <button onclick="showPage('pageMenu')" class="bg-gray-300 hover:bg-gray-400 px-4 py-1.5 rounded text-sm font-bold shadow-sm">กลับเมนูหลัก</button>
+      </div>
+      
+      <div class="flex flex-wrap items-end gap-4 mb-4 bg-white p-4 rounded-lg border shadow-sm flex-shrink-0">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">เลือก Part Name</label>
+          <select id="spcPartName" class="border rounded px-2 py-1.5 text-sm w-44" onchange="filterSpcPartNo()"><option value="">-- ทั้งหมด --</option></select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">เลือก Part No.</label>
+          <select id="spcPartNo" class="border rounded px-2 py-1.5 text-sm w-36"><option value="">-- ทั้งหมด --</option></select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-blue-800 mb-1">เลือกคุณสมบัติ (Parameter)</label>
+          <select id="dashParam" class="border rounded px-2 py-1.5 text-sm w-48 focus:ring-2 focus:ring-blue-500 bg-blue-50 font-bold">
+            <optgroup label="1. CHEMICAL PROPERTIES">
+              <option value="tc">T.C (%)</option><option value="si">Si (%)</option><option value="mn">Mn (%)</option><option value="p">P (%)</option><option value="s">S (%)</option><option value="cr">Cr (%)</option><option value="mo">Mo (%)</option><option value="cu">Cu (%)</option><option value="mg">Mg (%)</option>
+            </optgroup>
+            <optgroup label="2. MECHANICAL">
+              <option value="tensile">Tensile Strength</option><option value="yield_strength">Yield Strength</option><option value="elongation">Elongation (%)</option>
+            </optgroup>
+            <optgroup label="3. HARDNESS (แยกตาม Form)">
+              <option value="v1">Form A: V1</option><option value="cam1">Form A: Cam#1</option><option value="hb_surface">Form B: HB Surface</option><option value="hard_pt1">Form C: Point 1</option>
+            </optgroup>
+            <optgroup label="4. MICROSTRUCTURE">
+              <option value="nodularity_a">Nodularity (%)</option><option value="pearlite_a">Pearlite (%)</option><option value="ferrite_a">Ferrite (%)</option>
+            </optgroup>
+          </select>
+        </div>
+        <div><label class="block text-xs font-bold text-gray-700 mb-1">Lot No.</label><input type="text" id="spcLotNo" placeholder="พิมพ์ Lot No" class="border rounded px-2 py-1.5 text-sm w-28"></div>
+        <div><label class="block text-xs font-bold text-gray-700 mb-1">ตั้งแต่วันที่</label><input type="date" id="dashStart" class="border rounded px-2 py-1.5 text-sm w-32"></div>
+        <div><label class="block text-xs font-bold text-gray-700 mb-1">ถึงวันที่</label><input type="date" id="dashEnd" class="border rounded px-2 py-1.5 text-sm w-32"></div>
+        <button onclick="loadSpcData()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold py-1.5 px-6 rounded shadow transition">🔍 สร้างกราฟ</button>
+      </div>
+
+      <div class="flex flex-col xl:flex-row gap-6 flex-grow overflow-hidden">
+        <div class="w-full xl:w-64 border rounded-lg bg-white flex flex-col h-64 xl:h-full shadow-sm flex-shrink-0">
+          <div class="bg-blue-900 text-white text-sm font-bold py-2 px-4 rounded-t-lg">ตารางข้อมูลดิบ</div>
+          <div class="overflow-y-auto flex-grow bg-gray-50 p-2">
+            <table class="w-full text-left text-sm border-collapse">
+              <thead class="bg-gray-200 sticky top-0"><th class="py-2 px-3 border-b">วันที่ / Lot No</th><th class="py-2 px-3 border-b text-right">ค่าที่วัดได้</th></thead>
+              <tbody id="spcTableBody" class="text-gray-700 bg-white"><tr><td colspan="2" class="text-center py-10 text-gray-400">กรุณากดสร้างกราฟ</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div class="w-full xl:w-2/3 border rounded-lg p-4 flex flex-col bg-white overflow-y-auto gap-6 shadow-sm">
+          <div class="w-full h-64 border border-gray-200 rounded p-2 relative shadow-sm">
+            <div class="absolute top-1 left-0 w-full text-center text-xs font-bold text-gray-800 z-10">Trend Chart (Individual Value)</div>
+            <canvas id="spcAverageCanvas"></canvas>
+          </div>
+          <div class="w-full h-72 flex gap-4">
+            <div class="w-2/3 border border-gray-200 rounded p-2 relative shadow-sm">
+               <div class="absolute top-1 left-0 w-full text-center text-xs font-bold text-gray-800 z-10">Capability Histogram</div>
+              <canvas id="spcHistogramCanvas"></canvas>
+            </div>
+            <div class="w-1/3 bg-blue-50 border border-blue-200 rounded-lg p-4 flex flex-col justify-center shadow-inner">
+              <h3 class="text-sm font-bold text-blue-900 border-b border-blue-300 pb-1 mb-2 uppercase">Process Data</h3>
+              <div class="flex justify-between text-xs mb-1 text-gray-700"><span>LSL</span><span id="statLSL" class="font-bold">-</span></div>
+              <div class="flex justify-between text-xs mb-1 text-gray-700"><span>Target</span><span id="statTarget" class="font-bold">-</span></div>
+              <div class="flex justify-between text-xs mb-3 text-gray-700"><span>USL</span><span id="statUSL" class="font-bold">-</span></div>
+              <div class="flex justify-between text-xs mb-1 text-gray-700"><span>Sample Mean</span><span id="statMean" class="font-bold">-</span></div>
+              <div class="flex justify-between text-xs mb-1 text-gray-700"><span>Sample N</span><span id="statN" class="font-bold">-</span></div>
+              <div class="flex justify-between text-xs mb-4 text-gray-700"><span>StDev (Within)</span><span id="statStdDev" class="font-bold">-</span></div>
+              <h3 class="text-sm font-bold text-blue-900 border-b border-blue-300 pb-1 mb-2 uppercase">Capability</h3>
+              <div class="flex justify-between text-sm mb-1 text-gray-800"><span>Cp</span><span id="statCp" class="font-bold text-blue-600">-</span></div>
+              <div class="flex justify-between text-sm mb-1 text-gray-800"><span>Cpk</span><span id="statCpk" class="font-bold text-indigo-600">-</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="pageChemistryTable" class="bg-gray-50 p-4 sm:p-6 rounded-lg shadow w-full max-w-7xl hidden-page flex flex-col h-[calc(100vh-4rem)]">
+      <div class="flex justify-between items-center mb-4 border-b pb-4 flex-shrink-0 no-print">
+        <h2 class="text-xl font-bold text-blue-900">วิเคราะห์ข้อมูลเคมีรวมจากไฟล์เครื่อง (SPC Correlation & Filter)</h2>
+        <button onclick="showPage('pageMenu')" class="bg-gray-300 hover:bg-gray-400 px-4 py-1.5 rounded text-sm font-bold shadow-sm transition">กลับเมนูหลัก</button>
+      </div>
+      
+      <div class="flex flex-wrap items-end justify-between mb-4 bg-white p-4 rounded-lg border shadow-sm flex-shrink-0 no-print">
+        <div class="flex flex-wrap items-end gap-4">
+          <div><label class="block text-xs font-bold text-blue-900 mb-1">Part Name</label><select id="chemPartName" class="border rounded px-3 py-1.5 text-sm w-44" onchange="loadChemistryData()"><option value="">-- ทั้งหมด --</option></select></div>
+          <div><label class="block text-xs font-bold text-blue-900 mb-1">Part No.</label><select id="chemPartNo" class="border rounded px-3 py-1.5 text-sm w-36" onchange="loadChemistryData()"><option value="">-- ทั้งหมด --</option></select></div>
+          <div><label class="block text-xs font-bold text-blue-900 mb-1">Sample No.</label><select id="chemSampleNo" class="border rounded px-3 py-1.5 text-sm w-40" onchange="updateChemView()"><option value="">-- ทั้งหมด --</option></select></div>
+          <div><label class="block text-xs font-bold text-blue-900 mb-1">ตั้งแต่วันที่</label><input type="date" id="chemStart" class="border rounded px-3 py-1.5 text-sm"></div>
+          <div><label class="block text-xs font-bold text-blue-900 mb-1">ถึงวันที่</label><input type="date" id="chemEnd" class="border rounded px-3 py-1.5 text-sm"></div>
+          <button onclick="loadChemistryData()" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-1.5 px-6 rounded shadow transition">🔍 ดึงข้อมูล</button>
+        </div>
+        <button onclick="window.print()" class="bg-green-600 hover:bg-green-700 text-white text-sm font-bold py-1.5 px-6 rounded shadow transition">🖨️ พิมพ์รายงาน</button>
+      </div>
+
+      <div class="mb-4 bg-white p-4 rounded-lg shadow-sm border no-print flex-shrink-0">
+        <div class="flex justify-between items-center mb-3 border-b pb-2">
+          <span class="font-bold text-gray-800 text-sm">📊 ติ๊กเลือกค่าเคมีเพื่อดูกราฟ (เลือก 1 ค่า = I-MR Chart + ระฆังคว่ำ / เลือก >1 ค่า = X-bar & R Multi-Variate):</span>
+          <div class="flex gap-2">
+            <button onclick="toggleAllChem(true)" class="text-blue-600 text-xs font-bold hover:underline">เลือกทั้งหมด</button><span class="text-gray-300">|</span>
+            <button onclick="toggleAllChem(false)" class="text-red-500 text-xs font-bold hover:underline">ล้างค่า</button>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-x-5 gap-y-2">
+          <label class="flex items-center gap-1 cursor-pointer font-bold text-sm"><input type="checkbox" class="chem-cb w-4 h-4 rounded" style="accent-color: #E63946;" value="c" onchange="updateChemView()"> C</label>
+          <label class="flex items-center gap-1 cursor-pointer font-bold text-sm"><input type="checkbox" class="chem-cb w-4 h-4 rounded" style="accent-color: #3182CE;" value="si" onchange="updateChemView()"> Si</label>
+          <label class="flex items-center gap-1 cursor-pointer font-bold text-sm"><input type="checkbox" class="chem-cb w-4 h-4 rounded" style="accent-color: #38A169;" value="mn" onchange="updateChemView()"> Mn</label>
+          <label class="flex items-center gap-1 cursor-pointer font-bold text-sm"><input type="checkbox" class="chem-cb w-4 h-4 rounded" style="accent-color: #D69E2E;" value="p" onchange="updateChemView()"> P</label>
+          <label class="flex items-center gap-1 cursor-pointer font-bold text-sm"><input type="checkbox" class="chem-cb w-4 h-4 rounded" style="accent-color: #805AD5;" value="s" onchange="updateChemView()"> S</label>
+          <label class="flex items-center gap-1 cursor-pointer font-bold text-sm"><input type="checkbox" class="chem-cb w-4 h-4 rounded" style="accent-color: #00B5D8;" value="cr" onchange="updateChemView()"> Cr</label>
+          <label class="flex items-center gap-1 cursor-pointer font-bold text-sm"><input type="checkbox" class="chem-cb w-4 h-4 rounded" style="accent-color: #E53E3E;" value="mo" onchange="updateChemView()"> Mo</label>
+          <label class="flex items-center gap-1 cursor-pointer font-bold text-sm"><input type="checkbox" class="chem-cb w-4 h-4 rounded" style="accent-color: #5A67D8;" value="ni" onchange="updateChemView()"> Ni</label>
+          <label class="flex items-center gap-1 cursor-pointer font-bold text-sm"><input type="checkbox" class="chem-cb w-4 h-4 rounded" style="accent-color: #9AE6B4;" value="al" onchange="updateChemView()"> Al</label>
+          <label class="flex items-center gap-1 cursor-pointer font-bold text-sm"><input type="checkbox" class="chem-cb w-4 h-4 rounded" style="accent-color: #D53F8C;" value="cu" onchange="updateChemView()"> Cu</label>
+          <label class="flex items-center gap-1 cursor-pointer font-bold text-sm"><input type="checkbox" class="chem-cb w-4 h-4 rounded" style="accent-color: #38B2AC;" value="ti" onchange="updateChemView()"> Ti</label>
+          <label class="flex items-center gap-1 cursor-pointer font-bold text-sm"><input type="checkbox" class="chem-cb w-4 h-4 rounded" style="accent-color: #ED8936;" value="sn" onchange="updateChemView()"> Sn</label>
+          <label class="flex items-center gap-1 cursor-pointer font-bold text-sm"><input type="checkbox" class="chem-cb w-4 h-4 rounded" style="accent-color: #718096;" value="mg" onchange="updateChemView()"> Mg</label>
+        </div>
+      </div>
+
+      <div id="chemChartsContainer" class="w-full flex-shrink-0 flex flex-col gap-4 mb-4"></div>
+
+      <div id="printableChemTable" class="overflow-auto border border-gray-300 rounded bg-white shadow-sm w-full flex-grow min-h-[300px]">
+        <div class="print-header">รายงานผลการเปรียบเทียบค่าเคมี (Spectrometer Data)</div>
+        <table class="w-full text-left text-sm border-collapse whitespace-nowrap relative">
+          <thead id="chemTableHead" class="bg-blue-900 text-white sticky top-0 z-20 shadow-md"></thead>
+          <tbody id="chemTableBody" class="text-gray-700">
+            <tr><td colspan="20" class="text-center py-20 text-gray-400 font-bold text-lg">กรุณากดปุ่ม 🔍 ดึงข้อมูล หรือ ติ๊กเลือกค่าเคมี</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="pageHistory" class="bg-white p-8 rounded-lg shadow-lg w-full max-w-6xl hidden-page no-print">
+      <div class="flex justify-between items-center mb-6 border-b pb-4">
+        <h2 class="text-2xl font-bold text-gray-800">ประวัติการบันทึก Report</h2>
+        <button onclick="showPage('pageMenu')" class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded transition">กลับเมนูหลัก</button>
+      </div>
+      <div class="flex flex-wrap gap-4 mb-6 bg-blue-50 p-4 rounded-lg border">
+        <div><label class="block text-xs font-bold text-blue-800 mb-1">เลือก Part No.</label><select id="searchPartNo_History" class="border rounded px-3 py-1.5 text-sm w-48" onchange="filterHistory()"><option value="">-- ทั้งหมด --</option></select></div>
+        <div><label class="block text-xs font-bold text-blue-800 mb-1">พิมพ์ Lot No.</label><input type="text" id="searchLotNo_History" placeholder="พิมพ์คำค้นหา" class="border rounded px-3 py-1.5 text-sm w-48" onkeyup="filterHistory()"></div>
+        <div class="flex items-end gap-2"><button onclick="filterHistory()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-4 rounded shadow-sm">🔍 ค้นหา</button><button onclick="clearHistorySearch()" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-1.5 px-4 rounded shadow-sm">ล้างค่า</button></div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full bg-white border border-gray-300 shadow-sm">
+          <thead class="bg-gray-800 text-white"><tr><th class="py-2 px-4 border text-left">วันที่บันทึก</th><th class="py-2 px-4 border text-left">Part Name</th><th class="py-2 px-4 border text-left">Part No.</th><th class="py-2 px-4 border text-left">Lot No.</th><th class="py-2 px-4 border text-left">Inspection Date</th><th class="py-2 px-4 border text-center w-32">คำสั่ง</th></tr></thead>
+          <tbody id="historyTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="pageUpload" class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md hidden-page no-print text-center">
+      <h2 class="text-2xl font-bold mb-4 text-gray-800">นำเข้าข้อมูล Spectrometer</h2>
+      <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 mb-6 bg-gray-50">
+        <input type="file" id="csvFileInput" accept=".csv" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100">
+      </div>
+      <div class="flex gap-4">
+        <button onclick="showPage('pageMenu')" class="w-1/3 bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded transition">ยกเลิก</button>
+        <button onclick="uploadCsvFile()" class="w-2/3 bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded transition">อัปโหลดข้อมูล</button>
+      </div>
+      <div class="mt-6 border-t pt-4">
+        <button onclick="clearChemistryData()" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition shadow-sm">🗑️ ล้างข้อมูลเคมีทั้งหมดในระบบ</button>
+        <p class="text-xs text-red-500 mt-2">*ระวัง: การกดปุ่มนี้จะลบข้อมูลกราฟ SPC เก่าทิ้งทั้งหมด</p>
+      </div>
+    </div>
+
+    <div id="pageReport" class="w-full max-w-[1000px] hidden-page text-sm">
+      <div class="bg-white p-4 mb-4 rounded shadow border-l-4 border-blue-600 flex flex-col md:flex-row md:items-center justify-between gap-4 no-print" id="controlBar">
+        <div class="flex flex-wrap items-center gap-4">
+          <div class="flex items-center gap-2"><label class="font-bold text-gray-700 whitespace-nowrap">📌 Part Name:</label><select id="selPartName" onchange="filterFormCodeByPartName()" class="p-2 border rounded focus:ring-2 focus:ring-blue-500 bg-blue-50 font-bold max-w-[200px] truncate"><option value="">-- ทั้งหมด --</option></select></div>
+          <div class="flex items-center gap-2"><label class="font-bold text-gray-700 whitespace-nowrap">📌 Part No:</label><select id="selFormCode" onchange="changeFormLayout(this.value)" class="p-2 border rounded focus:ring-2 focus:ring-blue-500 bg-blue-50 font-bold"><option value="">-- เลือกรหัสฟอร์ม --</option></select></div>
+        </div>
+        <button type="button" onclick="clearFormConfirmed()" class="bg-red-500 hover:bg-red-600 text-white py-1.5 px-4 rounded text-xs font-bold shadow-sm">🗑️ ล้างแบบฟอร์ม</button>
+      </div>
+
+      <div class="form-paper bg-white border border-gray-300 p-8 shadow-xl relative" id="printableArea">
+        <form id="materialForm">
+          <table class="report-table mb-4"><tr><td rowspan="2" class="w-24 center align-middle font-bold text-lg">P.C.S.</td><td rowspan="2" class="center align-middle"><h1 class="text-2xl font-bold">P.C.S. MACHINE (THAILAND) CO.,LTD</h1><h2 class="text-lg font-bold mt-2">MATERIAL TEST REPORT</h2></td><td class="w-48 text-right font-bold text-yellow-600 align-top">②</td></tr></table>
+          <table class="report-table mb-4">
+            <tr><td class="font-bold w-32 bg-gray-50">Customer :</td><td><input type="text" name="CustomerName" class="input-highlight"></td><td class="font-bold w-24 bg-gray-50 text-blue-800">Lot. No. :</td><td class="w-32 center"><input type="text" name="LotNo" class="input-highlight" placeholder="ระบุ Lot No."></td><td class="font-bold w-24 bg-gray-50">Date :</td><td class="w-32 center"><input type="date" name="DocDate" class="input-highlight bg-transparent outline-none border-none"></td></tr>
+            <tr><td class="font-bold bg-gray-50">Part Name :</td><td class="center font-bold"><input type="text" name="PartName" class="input-highlight" id="formPartNameField"></td><td class="font-bold bg-gray-50">Material :</td><td class="center"><input type="text" name="Material" class="input-highlight" value="FC 250"></td><td class="font-bold bg-gray-50">Doc. No.:</td><td class="center">FO-QCS-19-003</td></tr>
+            <tr><td class="font-bold bg-gray-50">Part No. :</td><td class="center font-bold text-blue-800" id="docPartNo">-</td><td class="font-bold bg-gray-50">Q'ty :</td><td><input type="text" name="Qty" class="input-highlight"></td><td class="font-bold bg-gray-50">Rev :</td><td class="center">00</td></tr>
+          </table>
+
+          <div id="layout_Form_A" class="form-layout-section">
+            <div class="font-bold mb-1 text-xs">1. CHEMICAL PROPERTIES</div>
+            <table class="report-table mb-4">
+              <tr><th class="w-20">Element</th><th>T.C</th><th>Si</th><th>Mn</th><th>P</th><th>S</th><th>Cr</th><th>Mo</th><th>Cu</th><th>Mg</th></tr>
+              <tr><td class="center font-bold bg-gray-50">Spec</td><td class="center">3.20-3.90</td><td class="center">1.70-3.00</td><td class="center">0.30-0.90</td><td class="center">0.05 Max</td><td class="center">0.03 Max</td><td class="center">0.30 Max</td><td class="center">0.10 Max</td><td class="center">0.60-1.20</td><td class="center">0.03 Min</td></tr>
+              <tr><td class="center font-bold bg-gray-50">Actual</td><td><input type="number" step="any" name="A_TC" class="input-highlight" onchange="validateSpec(this, 3.20, 3.90)"></td><td><input type="number" step="any" name="A_Si" class="input-highlight" onchange="validateSpec(this, 1.70, 3.00)"></td><td><input type="number" step="any" name="A_Mn" class="input-highlight" onchange="validateSpec(this, 0.30, 0.90)"></td><td><input type="number" step="any" name="A_P" class="input-highlight" onchange="validateSpec(this, 0, 0.05)"></td><td><input type="number" step="any" name="A_S" class="input-highlight" onchange="validateSpec(this, 0, 0.03)"></td><td><input type="number" step="any" name="A_Cr" class="input-highlight" onchange="validateSpec(this, 0, 0.30)"></td><td><input type="number" step="any" name="A_Mo" class="input-highlight" onchange="validateSpec(this, 0, 0.10)"></td><td><input type="number" step="any" name="A_Cu" class="input-highlight" onchange="validateSpec(this, 0.60, 1.20)"></td><td><input type="number" step="any" name="A_Mg" class="input-highlight" onchange="validateSpec(this, 0.03, 999)"></td></tr>
+            </table>
+            <div class="font-bold mb-1 text-xs">2. MECHANICAL PROPERTIES & HARDNESS</div>
+            <table class="report-table mb-4">
+              <tr><th rowspan="2" class="w-16">ITEM</th><th colspan="4">TENSILE</th><th colspan="6">HARDNESS (HB)</th></tr>
+              <tr><th>Specimen Size</th><th>Tensile Strength</th><th>Yield Strength</th><th>Elongation</th><th>V1</th><th>V2</th><th>V3</th><th>V4</th><th>Cam #1</th><th>Cam #2</th></tr>
+              <tr><td class="center font-bold bg-gray-50">Actual</td><td><input type="number" step="any" name="A_Specimen" class="input-highlight" value="14.0"></td><td><input type="number" step="any" name="A_Tensile" class="input-highlight" onchange="validateSpec(this, 700, 9999)"></td><td><input type="number" step="any" name="A_Yield" class="input-highlight" onchange="validateSpec(this, 420, 9999)"></td><td><input type="number" step="any" name="A_Elongation" class="input-highlight" onchange="validateSpec(this, 2, 999)"></td><td><input type="number" step="any" name="A_V1" class="input-highlight" onchange="validateSpec(this, 229, 302)"></td><td><input type="number" step="any" name="A_V2" class="input-highlight" onchange="validateSpec(this, 229, 302)"></td><td><input type="number" step="any" name="A_V3" class="input-highlight" onchange="validateSpec(this, 229, 302)"></td><td><input type="number" step="any" name="A_V4" class="input-highlight" onchange="validateSpec(this, 229, 302)"></td><td><input type="number" step="any" name="A_Cam1" class="input-highlight" onchange="validateSpec(this, 229, 258)"></td><td><input type="number" step="any" name="A_Cam2" class="input-highlight" onchange="validateSpec(this, 229, 258)"></td></tr>
+            </table>
+            <div class="font-bold mb-1 text-xs">3. POINT CHECK / MICROSTRUCTURE</div>
+            <table class="report-table mb-4">
+              <tr><th colspan="2">Point A Ø 50</th><th colspan="2">Point B Ø 33</th></tr>
+              <tr><td class="bg-gray-50 pl-2 w-1/4">Graphite Max size (80µm Max)</td><td class="w-1/4"><input type="number" step="any" name="A_GraphMax_A" class="input-highlight" onchange="validateSpec(this, 0, 80)"></td><td class="bg-gray-50 pl-2 w-1/4">Graphite Max size (80µm Max)</td><td class="w-1/4"><input type="number" step="any" name="A_GraphMax_B" class="input-highlight" onchange="validateSpec(this, 0, 80)"></td></tr>
+              <tr><td class="bg-gray-50 pl-2">Graphite Avg size (40µm Max)</td><td><input type="number" step="any" name="A_GraphAvg_A" class="input-highlight" onchange="validateSpec(this, 0, 40)"></td><td class="bg-gray-50 pl-2">Graphite Avg size (40µm Max)</td><td><input type="number" step="any" name="A_GraphAvg_B" class="input-highlight" onchange="validateSpec(this, 0, 40)"></td></tr>
+              <tr><td class="bg-gray-50 pl-2">Nodularity (80% Min)</td><td><input type="number" step="any" name="A_Nodularity_A" class="input-highlight" onchange="validateSpec(this, 80, 100)"></td><td class="bg-gray-50 pl-2">Nodularity (80% Min)</td><td><input type="number" step="any" name="A_Nodularity_B" class="input-highlight" onchange="validateSpec(this, 80, 100)"></td></tr>
+              <tr><td class="bg-gray-50 pl-2">Pearlite (95% Min)</td><td><input type="number" step="any" name="A_Pearlite_A" class="input-highlight" onchange="validateSpec(this, 95, 100)"></td><td class="bg-gray-50 pl-2">Pearlite (95% Min)</td><td><input type="number" step="any" name="A_Pearlite_B" class="input-highlight" onchange="validateSpec(this, 95, 100)"></td></tr>
+              <tr><td class="bg-gray-50 pl-2">Ferrite (5% Max)</td><td><input type="number" step="any" name="A_Ferrite_A" class="input-highlight" onchange="validateSpec(this, 0, 5)"></td><td class="bg-gray-50 pl-2">Ferrite (5% Max)</td><td><input type="number" step="any" name="A_Ferrite_B" class="input-highlight" onchange="validateSpec(this, 0, 5)"></td></tr>
+              <tr><td class="bg-gray-50 pl-2">Cementite (5% Max)</td><td><input type="number" step="any" name="A_Cementite_A" class="input-highlight" onchange="validateSpec(this, 0, 5)"></td><td class="bg-gray-50 pl-2">Cementite (5% Max)</td><td><input type="number" step="any" name="A_Cementite_B" class="input-highlight" onchange="validateSpec(this, 0, 5)"></td></tr>
+            </table>
+          </div>
+
+          <div id="layout_Form_B" class="form-layout-section">
+            <div class="font-bold mb-1 text-xs">1. CHEMICAL ANALYSIS</div>
+            <table class="report-table mb-4">
+              <tr><th>ELEMANT</th><th>T.C</th><th>Si</th><th>Mn</th><th>P</th><th>S</th><th>Cu</th><th>Mg</th><th>Cr</th><th>Mo</th></tr>
+              <tr><td class="center font-bold bg-gray-50">ACTUAL</td><td><input type="number" step="any" name="B_TC" class="input-highlight" onchange="validateSpec(this, 3.20, 3.50)"></td><td><input type="number" step="any" name="B_Si" class="input-highlight" onchange="validateSpec(this, 1.70, 2.20)"></td><td><input type="number" step="any" name="B_Mn" class="input-highlight" onchange="validateSpec(this, 0.60, 0.90)"></td><td><input type="number" step="any" name="B_P" class="input-highlight" onchange="validateSpec(this, 0, 0.15)"></td><td><input type="number" step="any" name="B_S" class="input-highlight" onchange="validateSpec(this, 0, 0.10)"></td><td><input type="number" step="any" name="B_Cu" class="input-highlight"></td><td><input type="number" step="any" name="B_Mg" class="input-highlight"></td><td><input type="number" step="any" name="B_Cr" class="input-highlight"></td><td><input type="number" step="any" name="B_Mo" class="input-highlight"></td></tr>
+            </table>
+            <div class="font-bold text-sm ml-4 mb-2">(2.1) MECHANICAL PROPERTIES</div>
+            <table class="report-table mb-4 ml-4" style="width: calc(100% - 1rem);">
+              <tr><th>TENSILE STRENGTH</th><th>YIELD STRENGTH</th><th>ELONGATION</th><th>BRINELL (HB) INTERNAL</th><th>BRINELL (HB) SURFACE</th></tr>
+              <tr><td><input type="number" step="any" name="B_Tensile" class="input-highlight" onchange="validateSpec(this, 250, 9999)"></td><td><input type="number" step="any" name="B_Yield" class="input-highlight"></td><td><input type="number" step="any" name="B_Elongation" class="input-highlight"></td><td><input type="number" step="any" name="B_HB_Internal" class="input-highlight"></td><td><input type="number" step="any" name="B_HB_Surface" class="input-highlight" onchange="validateSpec(this, 180, 241)"></td></tr>
+            </table>
+            <div class="font-bold text-sm ml-4 mb-2">(2.2) MICRO STRUCTURE TEST</div>
+            <table class="report-table mb-4 ml-4" style="width: calc(100% - 1rem);">
+              <tr><th>NODULARITY(%)</th><th>PEARLITE(%)</th><th>FERRITE(%)</th><th>CEMENTITE(%)</th><th>TYPE OF GRAPHITE</th><th>GRAPHITE SIZE</th></tr>
+              <tr><td><input type="number" step="any" name="B_Nodularity" class="input-highlight"></td><td><input type="number" step="any" name="B_Pearlite" class="input-highlight" onchange="validateSpec(this, 95, 100)"></td><td><input type="number" step="any" name="B_Ferrite" class="input-highlight" onchange="validateSpec(this, 0, 5)"></td><td><input type="number" step="any" name="B_Cementite" class="input-highlight" onchange="validateSpec(this, 0, 2)"></td><td><input type="text" name="B_GraphiteType" class="input-highlight"></td><td><input type="text" name="B_GraphiteSize" class="input-highlight"></td></tr>
+            </table>
+          </div>
+
+          <div id="layout_Form_C" class="form-layout-section">
+            <div class="font-bold mb-1 text-xs">1. CHEMICAL ANALYSIS</div>
+            <table class="report-table mb-4">
+              <tr><th>ELEMENT</th><th>T.C</th><th>Si</th><th>Mn</th><th>P</th><th>S</th><th>Cu</th><th>Mg</th><th>Cr</th><th>Mo</th></tr>
+              <tr><td class="center font-bold bg-gray-50">ACTUAL</td><td><input type="number" step="any" name="C_TC" class="input-highlight" onchange="validateSpec(this, 2.7, 3.70)"></td><td><input type="number" step="any" name="C_Si" class="input-highlight" onchange="validateSpec(this, 1.80, 3.0)"></td><td><input type="number" step="any" name="C_Mn" class="input-highlight" onchange="validateSpec(this, 0.50, 1.00)"></td><td><input type="number" step="any" name="C_P" class="input-highlight" onchange="validateSpec(this, 0, 0.1)"></td><td><input type="number" step="any" name="C_S" class="input-highlight" onchange="validateSpec(this, 0, 0.12)"></td><td><input type="number" step="any" name="C_Cu" class="input-highlight"></td><td><input type="number" step="any" name="C_Mg" class="input-highlight"></td><td><input type="number" step="any" name="C_Cr" class="input-highlight"></td><td><input type="number" step="any" name="C_Mo" class="input-highlight"></td></tr>
+            </table>
+            <div class="font-bold text-sm ml-4 mb-2">(2.1) MECHANICAL & HARDNESS</div>
+            <div class="flex gap-4 ml-4 mb-4">
+              <div class="w-1/2">
+                <table class="report-table mt-2">
+                  <tr><th colspan="3">TENSILE TEST</th></tr>
+                  <tr class="text-[10px]"><th>TENSILE STRENGTH</th><th>YIELD STRENGTH</th><th>ELONGATION</th></tr>
+                  <tr><td><input type="number" step="any" name="C_TensileStrength" class="input-highlight" onchange="validateSpec(this, 250, 9999)"></td><td><input type="number" step="any" name="C_YieldStrength" class="input-highlight"></td><td><input type="number" step="any" name="C_Elongation" class="input-highlight"></td></tr>
+                </table>
+              </div>
+              <div class="w-1/2">
+                <table class="report-table mt-2">
+                  <tr><th colspan="2">HARDNESS</th></tr>
+                  <tr class="text-[10px]"><th class="w-10">Check Point</th><th>BRINELL (HRB 80-100)</th></tr>
+                  <tr><td class="center bg-gray-50">Point 1</td><td><input type="number" step="any" name="C_Hardness1" class="input-highlight" onchange="validateSpec(this, 80, 100)"></td></tr>
+                  <tr><td class="center bg-gray-50">Point 2</td><td><input type="number" step="any" name="C_Hardness2" class="input-highlight" onchange="validateSpec(this, 80, 100)"></td></tr>
+                  <tr><td class="center bg-gray-50">Point 3</td><td><input type="number" step="any" name="C_Hardness3" class="input-highlight" onchange="validateSpec(this, 80, 100)"></td></tr>
+                  <tr><td class="center bg-gray-50">Point 4</td><td><input type="number" step="any" name="C_Hardness4" class="input-highlight" onchange="validateSpec(this, 80, 100)"></td></tr>
+                </table>
+              </div>
+            </div>
+            
+            <div class="font-bold text-sm ml-4 mb-2">(2.2) MICRO STRUCTURE</div>
+            <table class="report-table mb-4 ml-4" style="width: calc(100% - 1rem);">
+              <tr><th>NODULARITY(%)</th><th>PEARLITE(%)</th><th>FERRITE(%)</th><th>CEMENTITE(%)</th><th>TYPE OF GRAPHITE</th><th>GRAPHITE SIZE</th></tr>
+              <tr><td><input type="number" step="any" name="C_Nodularity" class="input-highlight"></td><td><input type="number" step="any" name="C_Pearlite" class="input-highlight"></td><td><input type="number" step="any" name="C_Ferrite" class="input-highlight" onchange="validateSpec(this, 0, 5)"></td><td><input type="number" step="any" name="C_Cementite" class="input-highlight"></td><td><input type="text" name="C_TypeGraphite" class="input-highlight"></td><td><input type="text" name="C_GraphiteSize" class="input-highlight"></td></tr>
+            </table>
+          </div>
+
+          <div class="font-bold mb-1 text-xs">PICTURE FOR MICROSCOPIC</div>
+          <div class="border border-black p-4 mb-4 flex justify-around">
+            <label class="w-64 h-32 border border-dashed border-gray-400 flex items-center justify-center bg-gray-50 cursor-pointer overflow-hidden relative"><span class="text-sm font-bold absolute z-10 bg-white/80 px-2 rounded no-print">UNETCHED (คลิก)</span><input type="file" id="fileUnetched" class="hidden" accept="image/*" onchange="previewImg(this, 'imgUnetched')"><img id="imgUnetched" class="w-full h-full object-cover hidden absolute z-0"></label>
+            <label class="w-64 h-32 border border-dashed border-gray-400 flex items-center justify-center bg-gray-800 text-white cursor-pointer overflow-hidden relative"><span class="text-sm font-bold absolute z-10 bg-black/80 px-2 rounded no-print">ETCHED (คลิก)</span><input type="file" id="fileEtched" class="hidden" accept="image/*" onchange="previewImg(this, 'imgEtched')"><img id="imgEtched" class="w-full h-full object-cover hidden absolute z-0"></label>
+          </div>
+
+          <div class="flex gap-8 mb-4 items-center font-bold bg-yellow-50 p-2 border border-yellow-200">
+            <span>Judgement :</span>
+            <label><input type="radio" name="judgement" value="OK" class="mr-2" checked>☑ OK</label>
+            <label><input type="radio" name="judgement" value="Special" class="mr-2 text-yellow-600">☐ Special accept</label>
+            <label><input type="radio" name="judgement" value="NG" class="mr-2 text-red-600">☐ No Good</label>
+          </div>
+
+          <table class="w-full text-center border-collapse">
+            <tr><td class="w-1/3 border border-black p-1 bg-gray-50 font-bold">INSPECTOR</td><td class="w-1/3 border border-black p-1 bg-gray-50 font-bold">CHECKED</td><td class="w-1/3 border border-black p-1 bg-gray-50 font-bold">APPROVED</td></tr>
+            <tr>
+              <td class="border border-black h-12 align-bottom"><input type="text" class="input-highlight" name="InspectorName"></td><td class="border border-black h-12 align-bottom"><input type="text" class="input-highlight" name="CheckedName"></td><td class="border border-black h-12 align-bottom"><input type="text" class="input-highlight" name="ApprovedName"></td>
+            </tr>
+            <tr>
+              <td class="border border-black p-1 text-xs">Date : <input type="date" name="InspectorDate" class="outline-none bg-transparent"></td><td class="border border-black p-1 text-xs">Date : <input type="date" name="CheckedDate" class="outline-none bg-transparent"></td><td class="border border-black p-1 text-xs">Date : <input type="date" name="ApprovedDate" class="outline-none bg-transparent"></td>
+            </tr>
+          </table>
+
+          <div class="flex justify-between mt-6 pt-4 border-t no-print">
+            <div><button type="button" onclick="showPage('pageMenu')" class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded mr-2">🏠 กลับเมนูหลัก</button></div>
+            <div>
+              <button type="button" onclick="handlePrint()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 mr-2 rounded">🖨️ พิมพ์รายงานฟอร์ม</button>
+              <button type="button" onclick="submitData()" id="btnSaveData" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-8 rounded shadow">💾 บันทึกเข้าระบบ</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // ==========================================
+    // Plugin กราฟ SPC
+    // ==========================================
+    const pluginSpcZones = {
+        id: 'pluginSpcZones',
+        beforeDraw: (chart) => {
+            const ctx = chart.ctx; const chartArea = chart.chartArea;
+            const uclData = chart.data.datasets.find(d => d.label && d.label.includes('UCL'))?.data;
+            const lclData = chart.data.datasets.find(d => d.label && d.label.includes('LCL'))?.data;
+            
+            if(!uclData || !lclData || uclData.length===0) return;
+            
+            const ucl = uclData[0]; const lcl = lclData[0];
+            const yScale = chart.scales.y || chart.scales['y0']; 
+            if(!yScale) return;
+
+            const yUCL = yScale.getPixelForValue(ucl); const yLCL = yScale.getPixelForValue(lcl);
+            const yTop = chartArea.top; const yBot = chartArea.bottom;
+            ctx.save(); ctx.fillStyle = 'rgba(255, 100, 100, 0.2)';
+            if (yUCL > yTop) ctx.fillRect(chartArea.left, yTop, chartArea.right - chartArea.left, yUCL - yTop);
+            if (yBot > yLCL) ctx.fillRect(chartArea.left, yLCL, chartArea.right - chartArea.left, yBot - yLCL);
+            ctx.fillStyle = 'rgba(100, 255, 100, 0.2)'; let h = yLCL - yUCL; if(h > 0) ctx.fillRect(chartArea.left, yUCL, chartArea.right - chartArea.left, h); ctx.restore();
+        }
+    };
+    Chart.register(pluginSpcZones);
+
+    // ==========================================
+    // ตัวแปร Global & Config & สีประจำธาตุ
+    // ==========================================
+    let currentUser = ''; let globalHistory = []; let currentCategory = ''; let isViewingRecord = false;
+    let chartX = null; let chartR = null; let chartHist = null; 
+    let globalChemData = []; let activeChemCharts = []; let chemColFilters = {};
+
+    const elementColors = {
+        'c': '#E63946', 'si': '#3182CE', 'mn': '#38A169', 'p': '#D69E2E', 's': '#805AD5', 
+        'cr': '#00B5D8', 'mo': '#E53E3E', 'ni': '#5A67D8', 'al': '#9AE6B4', 'cu': '#D53F8C', 
+        'ti': '#38B2AC', 'sn': '#ED8936', 'mg': '#718096'
+    };
+
+    const formGroups = {
+        'Form_A': ['1015B699', '1015C459', '1015C491', 'RM1015C534', 'RM1015C419'],
+        'Form_B': ['RM8983323130', '3P598985', '3PD03797-1', '3P477126', '3PD05507-1', '1P568352-1E', '1P575779-1F', '1P602735', '1P602747', '1PC08738-1', '1PT00169', '1PC07531-1', '1PC08735-1', '3PC09099', '2P598224', '2PC08736', '3P539749-1', '3P539747-2', '3PD05938', '3P598902', '3P601873'],
+        'Form_C': ['4600-6210', '8002-6210', '6095-6210', '7732-6210']
+    };
+    const partMap = {
+        '1015B699': '(RAW)CAMSHAFT,INLET', '1015C459': '(RAW)CAMSHAFT,EXHAUST', '1015C491': '(RAW)CAMSHAFT,INLET', 'RM1015C534': 'CAMSHAFT, EXHAUST', 'RM1015C419': 'CAMSHAFT, EXHAUST',
+        'RM8983323130': 'BRACKET,CONVERTER,RR(RM)', '3P598985': 'BALANCE WEIGHT BLANK', '3PD03797-1': 'CYLINDER CASTING', '3P477126': 'CYLINDER CASTING', '3PD05507-1': 'CYLINDER CASTING',
+        '1P568352-1E': 'FIX SCROLL CAST BLANK', '1P575779-1F': 'FIX SCROLL CAST BLANK', '1P602735': 'FIX SCROLL CAST BLANK', '1P602747': 'FIX SCROLL CAST BLANK', '1PC08738-1': 'FIX SCROLL CAST BLANK',
+        '1PT00169': 'HOUSING CAST BLANK', '1PC07531-1': 'HOUSING CAST BLANK', '1PC08735-1': 'HOUSING CAST BLANK', '3PC09099': 'LOWER B/R HOLDER CAST BLANK', '2P598224': 'LOWER B/R HOLDER CAST BLANK',
+        '2PC08736': 'LOWER B/R HOLDER CAST BLANK', '3P539749-1': 'MIDDLE PLATE', '3P539747-2': 'MIDDLE PLATE', '3PD05938': 'MIDDLE PLATE CASTING', '3P598902': 'SPACER CAST BLANK', '3P601873': 'SEAL PLATE CAST BLANK',
+        '4600-6210': 'FRONT HOUSING CASTING', '8002-6210': 'FRONT HOUSING CASTING', '6095-6210': 'FRONT HOUSING CASTING', '7732-6210': 'FRONT HOUSING CASTING'
+    };
+
+    // ==========================================
+    // ระบบเปลี่ยนภาษา
+    // ==========================================
+    const translations = {
+      th: { menuTitle: "เมนูการทำงานหลัก", menuBtn1: "สร้าง Report ใหม่", menuBtn2: "ประวัติการบันทึก", menuBtn3: "Dashboard ทำ Report (Cpk)", menuBtn4: "วิเคราะห์เคมี (Correlation & SPC)", menuBtn5: "อัปโหลดไฟล์เคมี (CSV)", logoutBtn: "ออกจากระบบ" },
+      en: { menuTitle: "Main Menu", menuBtn1: "Create New Report", menuBtn2: "Report History", menuBtn3: "SPC Dashboard (Cpk)", menuBtn4: "Chemistry Table (Filter & SPC)", menuBtn5: "Upload Chemistry Data (CSV)", logoutBtn: "Logout" },
+      zh: { menuTitle: "主菜单 (Main Menu)", menuBtn1: "创建新报告 (New Report)", menuBtn2: "历史记录 (History)", menuBtn3: "SPC 统计仪表板 (SPC Dashboard)", menuBtn4: "化学成分表 (Chemistry Table)", menuBtn5: "上传化学文件 (Upload CSV)", logoutBtn: "登出 (Logout)" }
+    };
+    function changeLanguage(lang) { const t = translations[lang]; if(!t) return; document.getElementById('menuTitle').textContent = t.menuTitle; document.getElementById('menuBtn1').textContent = t.menuBtn1; document.getElementById('menuBtn2').textContent = t.menuBtn2; document.getElementById('menuBtn3').textContent = t.menuBtn3; document.getElementById('menuBtn4').textContent = t.menuBtn4; document.getElementById('menuBtn5').textContent = t.menuBtn5; document.getElementById('logoutBtn').textContent = t.logoutBtn; }
+
+    // ==========================================
+    // Core Functions
+    // ==========================================
+    function showPage(pageId) { document.querySelectorAll('main > div').forEach(d => d.classList.add('hidden-page')); document.getElementById(pageId).classList.remove('hidden-page'); }
+    function apiCall(action, payload) { return fetch('api.php?action=' + action, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).then(response => { if (!response.ok) throw new Error('Network error'); return response.json(); }).catch(error => { return { success: false, message: "เชื่อมต่อฐานข้อมูลไม่ได้" }; }); }
+
+    function initDropdowns() {
+      let allPartNos = []; Object.values(formGroups).forEach(arr => allPartNos = allPartNos.concat(arr));
+      const partNoHTML = '<option value="">-- ทั้งหมด --</option>' + allPartNos.map(p => `<option value="${p}">${p}</option>`).join('');
+      document.getElementById('spcPartNo').innerHTML = partNoHTML; document.getElementById('chemPartNo').innerHTML = partNoHTML; document.getElementById('searchPartNo_History').innerHTML = partNoHTML;
+      let uniquePartNames = [...new Set(Object.values(partMap))].sort();
+      const partNameHTML = '<option value="">-- ทั้งหมด --</option>' + uniquePartNames.map(p => `<option value="${p}">${p}</option>`).join('');
+      document.getElementById('chemPartName').innerHTML = partNameHTML; document.getElementById('selPartName').innerHTML = partNameHTML; document.getElementById('spcPartName').innerHTML = partNameHTML;
+      filterFormCodeByPartName();
+    }
+    window.addEventListener('DOMContentLoaded', initDropdowns);
+
+    // ==========================================
+    // Login & User Session
+    // ==========================================
+    (function() { emailjs.init("9ky_j-BDFd035lFBy"); })();
+    async function handleForgotPassword() { const user = document.getElementById('username').value; if (!user) return Swal.fire('แจ้งเตือน', 'กรุณากรอก Username', 'warning'); const isConfirm = await Swal.fire({ title: 'ยืนยันกู้คืนบัญชี?', text: `ส่งอีเมลแจ้งเตือนกู้คืนบัญชี ${user}?`, icon: 'question', showCancelButton: true, confirmButtonText: 'ยืนยัน' }); if (isConfirm.isConfirmed) { Swal.fire({ title: 'กำลังส่ง...', didOpen: () => Swal.showLoading() }); try { await emailjs.send('service_0iogm8n', 'template_k04qzjq', { user_id: user, to_email: "pcsqcthailand@gmail.com", notes: "กู้รหัส" }); Swal.fire('สำเร็จ!', 'ส่งอีเมลเรียบร้อย', 'success'); } catch (error) { Swal.fire('ผิดพลาด', 'ส่งอีเมลไม่ได้', 'error'); } } }
+    function handleLogin() { const u = document.getElementById('username').value; const p = document.getElementById('password').value; if(!u || !p) return Swal.fire('แจ้งเตือน', 'กรอกรหัสผ่าน', 'warning'); Swal.fire({ title: 'ตรวจสอบ...', didOpen: () => Swal.showLoading() }); apiCall('login', { username: u, password: p }).then(res => { if(res.success) { Swal.close(); currentUser = u; document.getElementById('userDisplay').textContent = 'User: ' + u; showPage('pageMenu'); } else { Swal.fire('ผิดพลาด', res.message, 'error'); } }); }
+    function doLogout() { currentUser = ''; document.getElementById('username').value = ''; document.getElementById('password').value = ''; showPage('pageLogin'); }
+
+    // ==========================================
+    // Form Report Functions
+    // ==========================================
+    function filterFormCodeByPartName() { const selected = document.getElementById('selPartName').value; const selCode = document.getElementById('selFormCode'); const cur = selCode.value; let html = '<option value="">-- เลือกรหัสฟอร์ม --</option>'; for (const [g, codes] of Object.entries(formGroups)) { let f = selected ? codes.filter(c => partMap[c] === selected) : codes; if (f.length > 0) { html += `<optgroup label="${g.replace('_', ' ')}">`; f.forEach(c => html += `<option value="${c}">${c}</option>`); html += `</optgroup>`; } } selCode.innerHTML = html; if (selected && partMap[cur] !== selected) changeFormLayout(''); else selCode.value = cur; }
+    function changeFormLayout(code) { if(!code) { document.getElementById('docPartNo').textContent = '-'; document.getElementById('formPartNameField').value = ''; document.querySelectorAll('.form-layout-section').forEach(el => el.classList.remove('active')); return; } if(partMap[code]) document.getElementById('selPartName').value = partMap[code]; if (!isViewingRecord) { document.getElementById('materialForm').reset(); const t = new Date().toISOString().split('T')[0]; ['DocDate', 'InspectorDate', 'CheckedDate', 'ApprovedDate'].forEach(n => { const f = document.querySelector(`input[name="${n}"]`); if(f) f.value = t; }); restoreDraft(code); } document.getElementById('docPartNo').textContent = code; if(!isViewingRecord && partMap[code]) document.getElementById('formPartNameField').value = partMap[code]; currentCategory = 'Form_C'; for (const [c, codes] of Object.entries(formGroups)) { if(codes.includes(code)) currentCategory = c; } document.querySelectorAll('.form-layout-section').forEach(el => el.classList.remove('active')); document.getElementById('layout_' + currentCategory).classList.add('active'); }
+    function createNewReport() { isViewingRecord = false; document.getElementById('materialForm').reset(); document.getElementById('selPartName').value = ''; filterFormCodeByPartName(); document.getElementById('imgUnetched').classList.add('hidden'); document.getElementById('imgEtched').classList.add('hidden'); document.getElementById('btnSaveData').classList.remove('hidden'); document.getElementById('selFormCode').disabled = false; document.getElementById('selPartName').disabled = false; document.querySelectorAll('.input-highlight').forEach(el => { el.classList.remove('input-error'); el.classList.remove('empty-error'); }); document.querySelector('input[name="InspectorName"]').value = currentUser; const t = new Date().toISOString().split('T')[0]; ['DocDate','InspectorDate','CheckedDate','ApprovedDate'].forEach(n => { let f=document.querySelector(`input[name="${n}"]`); if(f) f.value=t; }); changeFormLayout(''); showPage('pageReport'); }
+    document.addEventListener('keydown', function(e) { if (e.target.tagName.toLowerCase() === 'input' && !['file', 'radio', 'checkbox', 'date'].includes(e.target.type) && !e.target.readOnly) { if (['Enter', 'ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(e.key)) { if (e.target.type === 'number' && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) e.preventDefault(); if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Enter') e.preventDefault(); let inputs = Array.from(document.querySelectorAll('#printableArea input:not([readonly]):not([type="hidden"]):not([type="file"]):not([type="radio"]):not([type="date"])')).filter(el => el.offsetParent !== null); let idx = inputs.indexOf(e.target); if (e.key === 'ArrowRight' || e.key === 'Enter') { if (idx > -1 && idx < inputs.length - 1) { inputs[idx + 1].focus(); inputs[idx + 1].select(); } } else if (e.key === 'ArrowLeft') { if (idx > 0) { inputs[idx - 1].focus(); inputs[idx - 1].select(); } } else if (e.key === 'ArrowDown') { const r = e.target.getBoundingClientRect(); const cx = r.left + (r.width / 2); let c = inputs.filter(el => el.getBoundingClientRect().top > r.bottom - 5); if (c.length > 0) { c.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top); let nr = c.filter(el => el.getBoundingClientRect().top < c[0].getBoundingClientRect().top + 20); nr.sort((a, b) => Math.abs((a.getBoundingClientRect().left + a.getBoundingClientRect().width/2) - cx) - Math.abs((b.getBoundingClientRect().left + b.getBoundingClientRect().width/2) - cx)); nr[0].focus(); nr[0].select(); } } else if (e.key === 'ArrowUp') { const r = e.target.getBoundingClientRect(); const cx = r.left + (r.width / 2); let c = inputs.filter(el => el.getBoundingClientRect().bottom < r.top + 5); if (c.length > 0) { c.sort((a, b) => b.getBoundingClientRect().bottom - a.getBoundingClientRect().bottom); let pr = c.filter(el => el.getBoundingClientRect().bottom > c[0].getBoundingClientRect().bottom - 20); pr.sort((a, b) => Math.abs((a.getBoundingClientRect().left + a.getBoundingClientRect().width/2) - cx) - Math.abs((b.getBoundingClientRect().left + b.getBoundingClientRect().width/2) - cx)); pr[0].focus(); pr[0].select(); } } } } });
+    document.getElementById('materialForm').addEventListener('input', function(e) { if(isViewingRecord)return; const code=document.getElementById('selFormCode').value; if(!code)return; let draft=JSON.parse(localStorage.getItem('draft_'+code)||'{}'); if(e.target.name||e.target.id){if(e.target.type==='radio'&&!e.target.checked)return; draft[e.target.name||e.target.id]=e.target.value; localStorage.setItem('draft_'+code,JSON.stringify(draft));} });
+    function restoreDraft(code) { const saved=localStorage.getItem('draft_'+code); if(saved){const draft=JSON.parse(saved); Object.keys(draft).forEach(key=>{const input=document.querySelector(`input[name="${key}"], input#${key}`); if(input&&input.type!=='radio'&&input.type!=='file'){if(draft[key]){input.value=draft[key]; if(input.hasAttribute('onchange'))input.onchange();}}else if(input&&input.type==='radio'){const radio=document.querySelector(`input[name="${key}"][value="${draft[key]}"]`); if(radio)radio.checked=true;} });} }
+    function autoCheckJudgement() { const err=document.querySelectorAll('.form-layout-section.active .input-error'); if(err.length>0){document.querySelector('input[name="judgement"][value="NG"]').checked=true;}else{document.querySelector('input[name="judgement"][value="OK"]').checked=true;} }
+    function validateSpec(el, min, max) { if(el.value===""){el.classList.remove('input-error'); autoCheckJudgement(); return;} const val=parseFloat(el.value); if(val<min||val>max){el.classList.add('input-error');}else{el.classList.remove('input-error');} autoCheckJudgement(); }
+    function checkEmptyFields() { let inputs=Array.from(document.querySelectorAll('#printableArea input:not([readonly]):not([type="file"]):not([type="radio"])')).filter(el=>el.offsetParent!==null); let hasEmpty=false; inputs.forEach(input=>{if(input.value.trim()===''){hasEmpty=true; input.classList.add('empty-error'); input.addEventListener('input',function(){this.classList.remove('empty-error');},{once:true});}}); return hasEmpty; }
+    function clearFormConfirmed() { Swal.fire({title:'ล้างข้อมูล?',text:"ข้อมูลจะหายไป!",icon:'warning',showCancelButton:true,confirmButtonColor:'#d33',confirmButtonText:'ใช่',cancelButtonText:'ยกเลิก'}).then((result)=>{if(result.isConfirmed){const code=document.getElementById('selFormCode').value; if(code) localStorage.removeItem('draft_'+code); document.getElementById('materialForm').reset(); document.querySelectorAll('.input-highlight').forEach(el=>{el.classList.remove('input-error'); el.classList.remove('empty-error');}); const t=new Date().toISOString().split('T')[0]; ['DocDate','InspectorDate','CheckedDate','ApprovedDate'].forEach(name=>{const f=document.querySelector(`input[name="${name}"]`); if(f)f.value=t;}); document.getElementById('imgUnetched').classList.add('hidden'); document.getElementById('imgEtched').classList.add('hidden'); Swal.fire({toast:true,position:'top-end',showConfirmButton:false,timer:1500,icon:'success',title:'ล้างสำเร็จ'});}}); }
+    function previewImg(inp, id) { if(inp.files[0]) { let r=new FileReader(); r.onload=e=>{ document.getElementById(id).src=e.target.result; document.getElementById(id).classList.remove('hidden');}; r.readAsDataURL(inp.files[0]); } }
+    const getB64 = file => new Promise((res, rej) => { const r=new FileReader(); r.readAsDataURL(file); r.onload=()=>res({data:r.result}); r.onerror=e=>rej(e); });
+    async function handlePrint() { let pass=true; if(checkEmptyFields()){const res=await Swal.fire({title:'ข้อมูลไม่ครบ',text:'ต้องการปริ้นเลยหรือไม่?',icon:'warning',showCancelButton:true}); if(!res.isConfirmed)pass=false;} if(pass){const err=document.querySelectorAll('.form-layout-section.active .input-error'); if(err.length>0){const res=await Swal.fire({title:'มีค่า NG',text:'ยืนยันพิมพ์?',icon:'warning',showCancelButton:true}); if(!res.isConfirmed)pass=false;}} if(pass)window.print(); }
+    async function submitData() { const fc=document.getElementById('selFormCode').value; if(!fc)return Swal.fire('แจ้งเตือน','เลือกรหัสฟอร์มก่อน','warning'); let pass=true; if(checkEmptyFields()){const res=await Swal.fire({title:'ข้อมูลไม่ครบ',text:'บันทึกเลยหรือไม่?',icon:'warning',showCancelButton:true}); if(!res.isConfirmed)pass=false;} if(pass){const err=document.querySelectorAll('.form-layout-section.active .input-error'); if(err.length>0){const res=await Swal.fire({title:'มีค่า NG',text:'ยืนยันบันทึก?',icon:'warning',showCancelButton:true,confirmButtonColor:'#d33'}); if(!res.isConfirmed)pass=false;}} if(!pass)return; let vals={}; document.querySelectorAll('#printableArea form input').forEach(i=>{if(i.name||i.id){if(i.type==='radio'&&!i.checked)return; vals[i.name||i.id]=i.value;}}); let imgs={}; const fU=document.getElementById('fileUnetched'),fE=document.getElementById('fileEtched'); if(fU&&fU.files[0])imgs.unetched=await getB64(fU.files[0]); if(fE&&fE.files[0])imgs.etched=await getB64(fE.files[0]); Swal.fire({title:'กำลังบันทึก...',didOpen:()=>Swal.showLoading()}); apiCall('save_report',{user:currentUser,formCode:fc,formCategory:currentCategory,values:vals,images:imgs}).then(res=>{if(res.success){localStorage.removeItem('draft_'+fc); Swal.fire('สำเร็จ!',res.message,'success').then(()=>showPage('pageMenu'));}else Swal.fire('ผิดพลาด',res.message,'error');}); }
+
+    // ==========================================
+    // History
+    // ==========================================
+    function openHistory() { showPage('pageHistory'); document.getElementById('searchPartNo_History').value=''; document.getElementById('searchLotNo_History').value=''; apiCall('get_reports',{}).then(res=>{ if(res.success&&res.data.length>0){ globalHistory=res.data.map((item,index)=>({...item,originalIndex:index})); renderHistoryTable(globalHistory); }else{ globalHistory=[]; document.getElementById('historyTableBody').innerHTML=`<tr><td colspan="6" class="text-center py-6 text-gray-400">ยังไม่มีข้อมูล</td></tr>`; } }); }
+    function renderHistoryTable(dataList) { const tb=document.getElementById('historyTableBody'); tb.innerHTML=''; if(dataList.length===0){ tb.innerHTML=`<tr><td colspan="6" class="text-center py-6 text-gray-500 font-medium">ไม่พบข้อมูลที่ค้นหา</td></tr>`; return; } dataList.forEach(row=>{ let details={}; try{details=JSON.parse(row.details);}catch(e){} const vals=details.values||{}; tb.innerHTML+=`<tr class="hover:bg-blue-50 transition border-b"><td class="py-2 px-4 text-gray-600 text-sm">${row.timestamp}</td><td class="py-2 px-4">${vals.PartName||'-'}</td><td class="py-2 px-4 font-bold text-blue-800">${row.formCode||'-'}</td><td class="py-2 px-4 font-medium">${vals.LotNo||'-'}</td><td class="py-2 px-4 text-gray-700">${vals.InspectorDate||vals.DocDate||'-'}</td><td class="py-2 px-4 text-center"><button onclick="viewHistory(${row.originalIndex})" class="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1.5 text-sm rounded transition shadow-sm">เปิดดู / พิมพ์</button></td></tr>`; }); }
+    function filterHistory() { const searchPart=document.getElementById('searchPartNo_History').value.toLowerCase(); const searchLot=document.getElementById('searchLotNo_History').value.toLowerCase(); const filtered=globalHistory.filter(row=>{ let details={}; try{details=JSON.parse(row.details);}catch(e){} const vals=details.values||{}; const matchPart=searchPart===''||(row.formCode||'').toLowerCase()===searchPart; const matchLot=searchLot===''||(vals.LotNo||'').toLowerCase().includes(searchLot); return matchPart&&matchLot; }); renderHistoryTable(filtered); }
+    function clearHistorySearch() { document.getElementById('searchPartNo_History').value=''; document.getElementById('searchLotNo_History').value=''; renderHistoryTable(globalHistory); }
+    function viewHistory(i) { isViewingRecord=true; const row=globalHistory[i]; const data=JSON.parse(row.details); document.getElementById('materialForm').reset(); document.querySelectorAll('.input-highlight').forEach(el=>{el.classList.remove('input-error'); el.classList.remove('empty-error');}); document.getElementById('selPartName').value=partMap[row.formCode]||''; filterFormCodeByPartName(); document.getElementById('selFormCode').value=row.formCode; changeFormLayout(row.formCode); document.getElementById('selFormCode').disabled=true; document.getElementById('selPartName').disabled=true; document.getElementById('btnSaveData').classList.add('hidden'); Object.keys(data.values).forEach(k=>{ let el=document.querySelector(`input[name="${k}"]`); if(el&&el.type!=='radio'){el.value=data.values[k]; if(el.onchange)el.onchange();}else if(el&&el.type==='radio'){const r=document.querySelector(`input[name="${k}"][value="${data.values[k]}"]`); if(r)r.checked=true;} }); ['imgUnetched','imgEtched'].forEach(id=>document.getElementById(id).classList.add('hidden')); if(data.images?.unetched){document.getElementById('imgUnetched').src=data.images.unetched.data; document.getElementById('imgUnetched').classList.remove('hidden');} if(data.images?.etched){document.getElementById('imgEtched').src=data.images.etched.data; document.getElementById('imgEtched').classList.remove('hidden');} showPage('pageReport'); }
+
+    // ==========================================
+    // SPC Dashboard (ทำ Report - Cpk)
+    // ==========================================
+    function openSpcDashboard() { showPage('pageSpc'); initDropdowns(); }
+    function filterSpcPartNo() { const selected = document.getElementById('spcPartName').value; const spcPartNo = document.getElementById('spcPartNo'); const cur = spcPartNo.value; let html = '<option value="">-- ทั้งหมด --</option>'; for (const [g, codes] of Object.entries(formGroups)) { let f = selected ? codes.filter(c => partMap[c] === selected) : codes; if (f.length > 0) { html += `<optgroup label="${g.replace('_', ' ')}">`; f.forEach(c => html += `<option value="${c}">${c}</option>`); html += `</optgroup>`; } } spcPartNo.innerHTML = html; if (selected && partMap[cur] !== selected) spcPartNo.value = ''; else spcPartNo.value = cur; }
+    
+    function getDynamicSpec(param, partNo) {
+        let spec = { lsl: null, usl: null, target: null }; let formCat = null;
+        if (partNo) { for (const [group, codes] of Object.entries(formGroups)) { if (codes.includes(partNo)) formCat = group; } }
+        if (formCat === 'Form_A' || !formCat) {
+            if(param === 'tc') return { lsl: 3.20, usl: 3.90, target: 3.55 }; if(param === 'si') return { lsl: 1.70, usl: 3.00, target: 2.35 }; if(param === 'mn') return { lsl: 0.30, usl: 0.90, target: 0.60 }; if(param === 'p') return { lsl: null, usl: 0.05, target: 0.025 }; if(param === 's') return { lsl: null, usl: 0.03, target: 0.015 }; if(param === 'cr') return { lsl: null, usl: 0.30, target: 0.15 }; if(param === 'mo') return { lsl: null, usl: 0.10, target: 0.05 }; if(param === 'cu') return { lsl: 0.60, usl: 1.20, target: 0.90 }; if(param === 'mg') return { lsl: 0.03, usl: null, target: 0.05 };
+            if(param === 'tensile') return { lsl: 700, usl: null, target: 750 }; if(param === 'yield_strength') return { lsl: 420, usl: null, target: 450 }; if(param === 'elongation') return { lsl: 2, usl: null, target: 3 };
+            if(['v1','v2','v3','v4'].includes(param)) return { lsl: 229, usl: 302, target: 265 }; if(['cam1','cam2'].includes(param)) return { lsl: 229, usl: 258, target: 243 };
+            if(['nodularity_a', 'nodularity_b'].includes(param)) return { lsl: 80, usl: 100, target: 90 }; if(['pearlite_a', 'pearlite_b'].includes(param)) return { lsl: 95, usl: 100, target: 98 }; if(['ferrite_a', 'ferrite_b'].includes(param)) return { lsl: 0, usl: 5, target: 2 };
+        }
+        if (formCat === 'Form_B') {
+            if(param === 'tc') return { lsl: 3.20, usl: 3.50, target: 3.35 }; if(param === 'si') return { lsl: 1.70, usl: 2.20, target: 1.95 }; if(param === 'mn') return { lsl: 0.60, usl: 0.90, target: 0.75 }; if(param === 'p') return { lsl: null, usl: 0.15, target: 0.07 }; if(param === 's') return { lsl: null, usl: 0.10, target: 0.05 };
+            if(param === 'tensile') return { lsl: 250, usl: null, target: 300 }; if(param === 'hb_surface') return { lsl: 180, usl: 241, target: 210 }; if(param === 'pearlite_a') return { lsl: 95, usl: 100, target: 98 };
+        }
+        if (formCat === 'Form_C') {
+            if(param === 'tc') return { lsl: 2.70, usl: 3.70, target: 3.20 }; if(param === 'si') return { lsl: 1.80, usl: 3.00, target: 2.40 }; if(param === 'mn') return { lsl: 0.50, usl: 1.00, target: 0.75 }; if(param === 'p') return { lsl: null, usl: 0.10, target: 0.05 }; if(param === 's') return { lsl: null, usl: 0.12, target: 0.06 };
+            if(param === 'tensile') return { lsl: 250, usl: null, target: 300 }; if(param === 'hard_pt1') return { lsl: 80, usl: 100, target: 90 };
+        }
+        return spec;
+    }
+
+    function loadSpcData() {
+      const p = document.getElementById('dashParam').value; const st = document.getElementById('dashStart').value; const ed = document.getElementById('dashEnd').value; const lot = document.getElementById('spcLotNo').value; const partNo = document.getElementById('spcPartNo').value; const partName = document.getElementById('spcPartName').value;
+      Swal.fire({title:'วิเคราะห์สถิติ...', didOpen:()=>Swal.showLoading()});
+      apiCall('get_spc_data', { parameter: p, start_date: st, end_date: ed, lot_no: lot, part_no: partNo, part_name: partName }).then(res => {
+        if(!res.success) return Swal.fire('Error', res.message, 'error');
+        let recs = []; res.data.forEach(r => { let v = parseFloat(String(r.value).replace('<','')); if(!isNaN(v)) recs.push({date: r.record_date, sample: r.sample_no, val: r.value, num: v}); });
+        const tb = document.getElementById('spcTableBody'); tb.innerHTML='';
+        if(recs.length===0) { tb.innerHTML='<tr><td colspan="2" class="text-center py-6 text-red-500">ไม่พบข้อมูล หรือพารามิเตอร์นี้ไม่มีใน Form นี้</td></tr>'; if(chartX) chartX.destroy(); if(chartHist) chartHist.destroy(); Swal.close(); return; }
+        
+        let pts = [], lbls = []; let sumX = 0;
+        recs.forEach(r => { tb.innerHTML += `<tr class="border-b hover:bg-gray-50"><td class="py-2 px-3 text-xs">${r.date}<br><span class="text-[10px] text-gray-400 font-bold text-blue-600">${r.sample || '-'}</span></td><td class="py-2 px-3 text-right font-bold text-gray-700">${r.val}</td></tr>`; sumX += r.num; pts.push(r.num); lbls.push(r.sample || r.date); });
+
+        const n = pts.length; const meanX = sumX / n; let mr = [null]; let sumMR = 0;
+        for(let i = 1; i < n; i++) { let diff = Math.abs(pts[i] - pts[i-1]); mr.push(diff); sumMR += diff; }
+        const meanMR = n > 1 ? sumMR / (n - 1) : 0; const uclX = meanX + (2.66 * meanMR); const lclX = Math.max(0, meanX - (2.66 * meanMR)); const estSigma = meanMR / 1.128; 
+        
+        const spec = getDynamicSpec(p, partNo); let cp = '-', cpk = '-';
+        if (spec.lsl !== null && spec.usl !== null && estSigma > 0) { cp = (spec.usl - spec.lsl) / (6 * estSigma); cpk = Math.min((spec.usl - meanX) / (3 * estSigma), (meanX - spec.lsl) / (3 * estSigma)); } 
+        else if (spec.lsl !== null && estSigma > 0) { cpk = (meanX - spec.lsl) / (3 * estSigma); } else if (spec.usl !== null && estSigma > 0) { cpk = (spec.usl - meanX) / (3 * estSigma); }
+
+        document.getElementById('statLSL').textContent = spec.lsl !== null ? spec.lsl.toFixed(3) : 'N/A'; document.getElementById('statTarget').textContent = spec.target !== null ? spec.target.toFixed(3) : 'N/A'; document.getElementById('statUSL').textContent = spec.usl !== null ? spec.usl.toFixed(3) : 'N/A'; document.getElementById('statMean').textContent = meanX.toFixed(3); document.getElementById('statN').textContent = n; document.getElementById('statStdDev').textContent = estSigma.toFixed(4);
+        const cpEl = document.getElementById('statCp'); const cpkEl = document.getElementById('statCpk'); cpEl.textContent = cp !== '-' ? cp.toFixed(2) : '-'; cpkEl.textContent = cpk !== '-' ? cpk.toFixed(2) : '-'; if(cpk !== '-' && cpk < 1.33) { cpkEl.classList.remove('text-indigo-600'); cpkEl.classList.add('text-red-600'); } else { cpkEl.classList.remove('text-red-600'); cpkEl.classList.add('text-indigo-600'); }
+
+        if(chartX) chartX.destroy(); chartX = new Chart(document.getElementById('spcAverageCanvas').getContext('2d'), { type: 'line', data: { labels: lbls, datasets: [ { label: `ค่า ${p.toUpperCase()}`, data: pts, borderColor: '#000080', backgroundColor: '#000080', borderWidth: 1.5, pointRadius: 3, tension: 0 }, { label: `UCL`, data: Array(n).fill(uclX), borderColor: 'red', borderWidth: 1, pointRadius: 0, borderDash: [5,5] }, { label: `LCL`, data: Array(n).fill(lclX), borderColor: 'red', borderWidth: 1, pointRadius: 0, borderDash: [5,5] }, { label: `CL`, data: Array(n).fill(meanX), borderColor: 'green', borderWidth: 1, pointRadius: 0 } ]}, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, layout: { padding: { top: 20 } } } });
+        
+        // Dashboard Histogram (with UCL, LCL, Spec limits)
+        const minVal = Math.min(...pts, spec.lsl !== null ? spec.lsl : 999, lclX); 
+        const maxVal = Math.max(...pts, spec.usl !== null ? spec.usl : -999, uclX); 
+        const margin = (maxVal - minVal) * 0.05 || 1;
+        const histMin = minVal - margin; const histMax = maxVal + margin;
+        const binCount = 12; const binWidth = (histMax - histMin) / binCount; 
+        let bins = Array(binCount).fill(0); let binLabels = []; let binCenters = []; 
+        for(let i=0; i<binCount; i++) { 
+            let start = histMin + (i * binWidth); let end = histMin + ((i+1) * binWidth); 
+            binLabels.push(`${start.toFixed(2)}-${end.toFixed(2)}`); binCenters.push(start + (binWidth/2)); 
+        } 
+        pts.forEach(val => { 
+            let idx = Math.floor((val - histMin) / binWidth); 
+            if(idx < 0) idx = 0; if(idx >= binCount) idx = binCount - 1; 
+            bins[idx]++; 
+        });
+
+        let barColors = binCenters.map(center => { 
+            let isOutSpec = false;
+            if(spec.usl !== null && center > spec.usl) isOutSpec = true;
+            if(spec.lsl !== null && center < spec.lsl) isOutSpec = true;
+            if (isOutSpec) return '#dc2626'; // Out of Spec = Red
+            if (center > uclX || center < lclX) return '#f59e0b'; // Out of Control = Amber
+            return '#15803d'; // Normal = Green
+        }); 
+
+        let normalCurve = []; 
+        if (estSigma > 0) { binCenters.forEach(x => { normalCurve.push((1 / (estSigma * Math.sqrt(2 * Math.PI))) * Math.exp(-Math.pow(x - meanX, 2) / (2 * Math.pow(estSigma, 2))) * n * binWidth); }); } 
+        else { normalCurve = Array(binCount).fill(0); }
+
+        let getCatPos = (val) => (val - histMin) / binWidth - 0.5;
+        
+        let histAnnotations = {
+            lineUCL: { type: 'line', xMin: getCatPos(uclX), xMax: getCatPos(uclX), borderColor: '#dc2626', borderWidth: 2, borderDash: [5,5], label: { display: true, content: 'UCL', position: 'start', backgroundColor: '#dc2626', color: '#fff', font: {size: 10} } },
+            lineLCL: { type: 'line', xMin: getCatPos(lclX), xMax: getCatPos(lclX), borderColor: '#dc2626', borderWidth: 2, borderDash: [5,5], label: { display: true, content: 'LCL', position: 'start', backgroundColor: '#dc2626', color: '#fff', font: {size: 10} } },
+            lineCL: { type: 'line', xMin: getCatPos(meanX), xMax: getCatPos(meanX), borderColor: '#16a34a', borderWidth: 2, label: { display: true, content: 'CL', position: 'start', backgroundColor: '#16a34a', color: '#fff', font: {size: 10}, yAdjust: 20 } }
+        };
+        
+        if (spec.usl !== null) histAnnotations.lineUSL = { type: 'line', xMin: getCatPos(spec.usl), xMax: getCatPos(spec.usl), borderColor: '#9333ea', borderWidth: 2, label: { display: true, content: 'USL', position: 'end', backgroundColor: '#9333ea', color: '#fff', font: {size: 10} } };
+        if (spec.lsl !== null) histAnnotations.lineLSL = { type: 'line', xMin: getCatPos(spec.lsl), xMax: getCatPos(spec.lsl), borderColor: '#9333ea', borderWidth: 2, label: { display: true, content: 'LSL', position: 'end', backgroundColor: '#9333ea', color: '#fff', font: {size: 10} } };
+
+        if(chartHist) chartHist.destroy(); 
+        chartHist = new Chart(document.getElementById('spcHistogramCanvas').getContext('2d'), { 
+            type: 'bar', data: { labels: binLabels, datasets: [ { type: 'line', label: 'Curve', data: normalCurve, borderColor: '#1e293b', borderWidth: 2, pointRadius: 0, tension: 0.4, fill: false }, { type: 'bar', label: 'Freq', data: bins, backgroundColor: barColors, borderColor: 'black', borderWidth: 1 } ]}, 
+            options: { 
+                responsive: true, maintainAspectRatio: false, 
+                plugins: { legend: { display: false }, annotation: { annotations: histAnnotations } }, 
+                layout: { padding: { top: 20 } }, scales: { x: { ticks: { font: {size: 9} } } } 
+            } 
+        });
+        Swal.close();
+      });
+    }
+
+    // ==========================================
+    // Upload CSV & Clear Chemistry Data
+    // ==========================================
+    function uploadCsvFile() { const fileInput = document.getElementById('csvFileInput'); if (!fileInput.files.length) return Swal.fire('แจ้งเตือน', 'กรุณาเลือกไฟล์', 'warning'); const formData = new FormData(); formData.append('csv_file', fileInput.files[0]); Swal.fire({ title: 'กำลังนำเข้า...', didOpen: () => Swal.showLoading() }); fetch('api.php?action=upload_csv', { method: 'POST', body: formData }).then(r => r.json()).then(res => { if(res.success) { Swal.fire('สำเร็จ!', res.message, 'success').then(() => { fileInput.value = ''; openChemistryTable(); }); } else { Swal.fire('ผิดพลาด', res.message, 'error'); } }).catch(err => Swal.fire('Error', 'อัปโหลดไม่สำเร็จ', 'error')); }
+    function clearChemistryData() { Swal.fire({ title: 'ยืนยันการล้างข้อมูล?', text: "ข้อมูลเคมีจากเครื่อง Spectrometer ที่เคยอัปโหลดไว้ทั้งหมดจะถูกลบทิ้งถาวร!", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6', confirmButtonText: 'ใช่, ล้างข้อมูลเลย', cancelButtonText: 'ยกเลิก' }).then((result) => { if (result.isConfirmed) { Swal.fire({ title: 'กำลังล้างข้อมูล...', didOpen: () => Swal.showLoading() }); apiCall('clear_chemistry_data', {}).then(res => { if(res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); } else { Swal.fire('ผิดพลาด', res.message, 'error'); } }); } }); }
+
+    // ==========================================
+    // Chemistry Table (Multi-Axis Correlation & I-MR + Histogram)
+    // ==========================================
+    function openChemistryTable() { showPage('pageChemistryTable'); initDropdowns(); chemColFilters = {}; document.getElementById('chemChartsContainer').innerHTML = ''; document.getElementById('chemTableBody').innerHTML = '<tr><td colspan="20" class="text-center py-20 text-gray-400 font-bold text-lg">กรุณากดปุ่ม 🔍 ดึงข้อมูล หรือ ติ๊กเลือกค่าเคมี</td></tr>'; }
+    
+    function loadChemistryData() { 
+      const st = document.getElementById('chemStart').value; const ed = document.getElementById('chemEnd').value; const partNo = document.getElementById('chemPartNo').value; 
+      document.getElementById('chemTableBody').innerHTML = '<tr><td colspan="20" class="text-center py-20 text-gray-400 font-bold text-lg">กำลังดึงข้อมูล...</td></tr>'; 
+      Swal.fire({title:'ดึงข้อมูล...', allowOutsideClick:false, didOpen:()=>Swal.showLoading()}); 
+      apiCall('get_all_chemistry', { start_date: st, end_date: ed, part_no: partNo }).then(res => { 
+        if(res.success && res.data) { 
+            globalChemData = res.data; 
+            let uniqueSamples = [...new Set(globalChemData.map(item => item.sample_no).filter(Boolean))].sort();
+            let sampleHtml = '<option value="">-- ทั้งหมด --</option>';
+            uniqueSamples.forEach(s => sampleHtml += `<option value="${s}">${s}</option>`);
+            document.getElementById('chemSampleNo').innerHTML = sampleHtml;
+            updateChemView(); 
+            Swal.close(); 
+        } else { globalChemData = []; updateChemView(); Swal.fire('แจ้งเตือน', 'ไม่พบข้อมูล', 'info'); } 
+      }); 
+    }
+
+    function toggleAllChem(checkStatus) { document.querySelectorAll('.chem-cb').forEach(cb => cb.checked = checkStatus); updateChemView(); }
+    function handleChemColFilter(colName, value) { chemColFilters[colName] = value.toLowerCase().trim(); renderChemTableOnly(); }
+    
+    function updateChemView() { 
+      const partNameFilter = document.getElementById('chemPartName').value; 
+      const partNoFilter = document.getElementById('chemPartNo').value; 
+      const sampleFilter = document.getElementById('chemSampleNo').value; 
+      
+      let baseFilteredData = globalChemData.filter(r => { 
+          let pNo = r.part_no || ''; let pName = partMap[pNo] || ''; 
+          let passPart = (!pNo || ((partNoFilter === "" || pNo === partNoFilter) && (partNameFilter === "" || pName === partNameFilter)));
+          let passSample = (sampleFilter === "" || r.sample_no === sampleFilter);
+          return passPart && passSample; 
+      }); 
+
+      const checkedBoxes = Array.from(document.querySelectorAll('.chem-cb:checked')).map(cb => cb.value); 
+      let headHTML = `<tr><th class="py-2 px-2 border border-gray-600 w-24 sticky left-0 z-30 bg-blue-900">วันที่</th><th class="py-2 px-2 border border-gray-600 w-20 sticky left-24 z-30 bg-blue-900">เวลา</th><th class="py-2 px-2 border border-gray-600 w-24 sticky left-44 z-30 bg-blue-900">Sample No.</th>`; 
+      checkedBoxes.forEach(el => { headHTML += `<th class="py-2 px-2 border border-gray-600 z-20 bg-blue-900 text-center">${el.toUpperCase()}</th>`; }); 
+      headHTML += `</tr><tr>`; 
+      headHTML += `<th class="py-1 px-1 border border-gray-600 bg-gray-100 sticky left-0 z-30"><input type="text" placeholder="🔍 วันที่" class="w-full text-xs p-1 border rounded text-black font-normal" value="${chemColFilters['date'] || ''}" onkeyup="handleChemColFilter('date', this.value)"></th>`; 
+      headHTML += `<th class="py-1 px-1 border border-gray-600 bg-gray-100 sticky left-24 z-30"><input type="text" placeholder="🔍 เวลา" class="w-full text-xs p-1 border rounded text-black font-normal" value="${chemColFilters['time'] || ''}" onkeyup="handleChemColFilter('time', this.value)"></th>`; 
+      headHTML += `<th class="py-1 px-1 border border-gray-600 bg-gray-100 sticky left-44 z-30"><input type="text" placeholder="🔍 Sample" class="w-full text-xs p-1 border rounded text-black font-normal" value="${chemColFilters['sample'] || ''}" onkeyup="handleChemColFilter('sample', this.value)"></th>`; 
+      checkedBoxes.forEach(el => { headHTML += `<th class="py-1 px-1 border border-gray-600 bg-gray-100 z-20"><input type="text" placeholder="🔍 ${el.toUpperCase()}" class="w-full text-xs p-1 border rounded text-black font-normal" value="${chemColFilters[el] || ''}" onkeyup="handleChemColFilter('${el}', this.value)"></th>`; }); 
+      headHTML += `</tr>`; 
+      
+      document.getElementById('chemTableHead').innerHTML = headHTML; 
+      renderChemSpcCharts(baseFilteredData, checkedBoxes); 
+      renderChemTableOnly(baseFilteredData, checkedBoxes); 
+    }
+
+    function renderChemTableOnly(baseData = null, elements = null) { 
+      if(!baseData) { 
+          const partNameFilter = document.getElementById('chemPartName').value; 
+          const partNoFilter = document.getElementById('chemPartNo').value; 
+          const sampleFilter = document.getElementById('chemSampleNo').value;
+          baseData = globalChemData.filter(r => { 
+              let pNo = r.part_no || ''; let pName = partMap[pNo] || ''; 
+              let passPart = (!pNo || ((partNoFilter === "" || pNo === partNoFilter) && (partNameFilter === "" || pName === partNameFilter)));
+              let passSample = (sampleFilter === "" || r.sample_no === sampleFilter);
+              return passPart && passSample; 
+          }); 
+      } 
+      if(!elements) elements = Array.from(document.querySelectorAll('.chem-cb:checked')).map(cb => cb.value); 
+      
+      let tableData = baseData.filter(r => { 
+          let pass = true; 
+          if(chemColFilters['date'] && !(r.record_date||'').toLowerCase().includes(chemColFilters['date'])) pass = false; 
+          if(chemColFilters['time'] && !(r.record_time||'').toLowerCase().includes(chemColFilters['time'])) pass = false; 
+          if(chemColFilters['sample'] && !(r.sample_no||'').toLowerCase().includes(chemColFilters['sample'])) pass = false; 
+          elements.forEach(el => { if(chemColFilters[el] && !String(r[`${el}_val`] || '').toLowerCase().includes(chemColFilters[el])) pass = false; }); 
+          return pass; 
+      }); 
+      
+      const tb = document.getElementById('chemTableBody'); tb.innerHTML = ''; 
+      if(tableData.length === 0) { 
+          tb.innerHTML = `<tr><td colspan="${3 + elements.length}" class="text-center py-10 text-gray-500 font-medium">ไม่พบข้อมูล</td></tr>`; 
+      } else { 
+          tableData.forEach(r => { 
+              let tr = `<tr class="border-b hover:bg-cyan-50 transition group"><td class="py-2 px-2 border-r border-gray-300 text-gray-600 text-center sticky left-0 bg-white group-hover:bg-cyan-50 z-10">${r.record_date || '-'}</td><td class="py-2 px-2 border-r border-gray-300 text-gray-500 text-center sticky left-24 bg-white group-hover:bg-cyan-50 z-10">${r.record_time || '-'}</td><td class="py-2 px-2 border-r border-gray-300 font-bold text-blue-700 text-center sticky left-44 bg-white group-hover:bg-cyan-50 z-10">${r.sample_no || '-'}</td>`; 
+              elements.forEach(el => { 
+                  let val = r[`${el}_val`] || '-'; 
+                  let bgClass = (chemColFilters[el] && String(val).toLowerCase().includes(chemColFilters[el])) ? 'bg-yellow-100 font-bold' : ''; 
+                  let txtColor = elementColors[el] || '#374151';
+                  tr += `<td class="py-2 px-2 border-r border-gray-300 text-center font-semibold ${bgClass}" style="color: ${txtColor};">${val}</td>`; 
+              }); 
+              tr += `</tr>`; tb.innerHTML += tr; 
+          }); 
+      } 
+    }
+
+    // 🌟 ระบบวาดกราฟ อิงตามจำนวนค่าเคมีที่เลือก (พร้อมลากเส้น LCL UCL อัตโนมัติ) 🌟
+    function renderChemSpcCharts(data, elements) { 
+        const container = document.getElementById('chemChartsContainer'); 
+        if(activeChemCharts.length > 0) { activeChemCharts.forEach(c => c.destroy()); activeChemCharts = []; }
+        container.innerHTML = ''; 
+        if (data.length === 0 || elements.length === 0) return; 
+
+        let sortedData = [...data].sort((a, b) => new Date(a.record_date + ' ' + a.record_time) - new Date(b.record_date + ' ' + b.record_time));
+        const labels = sortedData.map(r => r.sample_no || r.record_date); 
+        const n = sortedData.length; 
+
+        // 🟢 กรณีเลือก 1 ค่า: โชว์ I-MR Chart + Histogram (พร้อมลากเส้น UCL CL LCL)
+        if (elements.length === 1) {
+            let el = elements[0].toLowerCase();
+            let pts = sortedData.map(r => { let v = parseFloat(String(r[`${el}_val`]).replace('<','')); return isNaN(v) ? 0 : v; });
+            
+            let sumX = 0; pts.forEach(v => sumX += v);
+            let meanX = n > 0 ? sumX / n : 0;
+            
+            let mr = [null]; let sumMR = 0;
+            for(let i=1; i<n; i++) { let diff = Math.abs(pts[i] - pts[i-1]); mr.push(diff); sumMR += diff; }
+            let meanMR = n > 1 ? sumMR / (n-1) : 0;
+            
+            let uclX = meanX + (2.66 * meanMR); let lclX = Math.max(0, meanX - (2.66 * meanMR));
+            let uclMR = meanMR * 3.267; let lclMR = 0;
+            let estSigma = meanMR / 1.128;
+
+            let wrapper = document.createElement('div'); 
+            wrapper.className = 'w-full bg-white border border-gray-300 rounded shadow-md flex flex-col mb-4 overflow-hidden flex-shrink-0'; 
+            wrapper.innerHTML = `
+                <div class="bg-blue-900 text-white font-bold py-2 px-4 text-sm uppercase flex justify-between"><span>📊 I-MR Chart & Histogram: ธาตุ ${el}</span></div>
+                <div class="p-4 grid grid-cols-1 xl:grid-cols-3 gap-4 bg-gray-50">
+                    <div class="w-full h-64 bg-white relative border border-gray-300 rounded p-2 shadow-sm"><div class="absolute top-1 w-full text-center text-xs font-bold text-gray-800 z-10">Individual Chart (X)</div><canvas id="singleXChart"></canvas></div>
+                    <div class="w-full h-64 bg-white relative border border-gray-300 rounded p-2 shadow-sm"><div class="absolute top-1 w-full text-center text-xs font-bold text-gray-800 z-10">Moving Range Chart (MR)</div><canvas id="singleMRChart"></canvas></div>
+                    <div class="w-full h-64 bg-white relative border border-gray-300 rounded p-2 shadow-sm"><div class="absolute top-1 w-full text-center text-xs font-bold text-gray-800 z-10">Histogram (Bell Curve)</div><canvas id="singleHistChart"></canvas></div>
+                </div>`; 
+            container.appendChild(wrapper);
+
+            let chartColor = elementColors[el] || '#2563eb'; 
+
+            let chartX = new Chart(document.getElementById('singleXChart').getContext('2d'), {
+                type: 'line', data: { labels: labels, datasets: [
+                    { label: `ค่า ${el.toUpperCase()}`, data: pts, borderColor: chartColor, backgroundColor: chartColor, borderWidth: 2, pointRadius: 4 },
+                    { label: `UCL (${uclX.toFixed(3)})`, data: Array(n).fill(uclX), borderColor: '#dc2626', borderWidth: 1.5, pointRadius: 0, borderDash: [5,5] },
+                    { label: `LCL (${lclX.toFixed(3)})`, data: Array(n).fill(lclX), borderColor: '#dc2626', borderWidth: 1.5, pointRadius: 0, borderDash: [5,5] },
+                    { label: `Mean (${meanX.toFixed(3)})`, data: Array(n).fill(meanX), borderColor: '#16a34a', borderWidth: 1.5, pointRadius: 0 }
+                ]},
+                options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 20 } }, plugins: { legend: { position: 'bottom' } } }
+            });
+            activeChemCharts.push(chartX);
+
+            let chartMR = new Chart(document.getElementById('singleMRChart').getContext('2d'), {
+                type: 'line', data: { labels: labels, datasets: [
+                    { label: `MR`, data: mr, borderColor: '#d97706', backgroundColor: '#d97706', borderWidth: 2, pointRadius: 4, spanGaps: true },
+                    { label: `UCL (${uclMR.toFixed(3)})`, data: Array(n).fill(uclMR), borderColor: '#dc2626', borderWidth: 1.5, pointRadius: 0, borderDash: [5,5] },
+                    { label: `LCL (${lclMR.toFixed(3)})`, data: Array(n).fill(lclMR), borderColor: '#dc2626', borderWidth: 1.5, pointRadius: 0, borderDash: [5,5] },
+                    { label: `Mean (${meanMR.toFixed(3)})`, data: Array(n).fill(meanMR), borderColor: '#16a34a', borderWidth: 1.5, pointRadius: 0 }
+                ]},
+                options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 20 } }, plugins: { legend: { position: 'bottom' } } }
+            });
+            activeChemCharts.push(chartMR);
+
+            // ขยายสเกล Histogram ให้ครอบคลุม LCL และ UCL
+            const minVal = Math.min(Math.min(...pts), lclX); 
+            const maxVal = Math.max(Math.max(...pts), uclX);
+            const margin = (maxVal - minVal) * 0.05 || 1;
+            const histMin = minVal - margin; 
+            const histMax = maxVal + margin;
+            
+            const binCount = 12; 
+            const binWidth = (histMax - histMin) / binCount;
+            let bins = Array(binCount).fill(0); let binLabels = []; let binCenters = [];
+            
+            for(let i=0; i<binCount; i++) { 
+                let start = histMin + (i * binWidth); let end = histMin + ((i+1) * binWidth); 
+                binLabels.push(`${start.toFixed(2)}-${end.toFixed(2)}`); binCenters.push(start + (binWidth/2)); 
+            }
+            
+            pts.forEach(val => { 
+                let idx = Math.floor((val - histMin) / binWidth); 
+                if(idx < 0) idx = 0; if(idx >= binCount) idx = binCount - 1; 
+                bins[idx]++; 
+            });
+            
+            let barColors = binCenters.map(center => { if (center > uclX || center < lclX) return '#dc2626'; return chartColor; });
+            let normalCurve = [];
+            if (estSigma > 0) { binCenters.forEach(x => { normalCurve.push((1 / (estSigma * Math.sqrt(2 * Math.PI))) * Math.exp(-Math.pow(x - meanX, 2) / (2 * Math.pow(estSigma, 2))) * n * binWidth); }); } 
+            else { normalCurve = Array(binCount).fill(0); }
+
+            // ฟังก์ชันคำนวณตำแหน่งเส้นบนกราฟแท่ง
+            let getCatPos = (val) => (val - histMin) / binWidth - 0.5;
+
+            let chartHist = new Chart(document.getElementById('singleHistChart').getContext('2d'), {
+                type: 'bar', data: {
+                    labels: binLabels, datasets: [
+                        { type: 'line', label: 'Normal Curve', data: normalCurve, borderColor: '#1e293b', borderWidth: 2, pointRadius: 0, tension: 0.4, fill: false },
+                        { type: 'bar', label: 'Frequency', data: bins, backgroundColor: barColors, borderColor: '#fff', borderWidth: 1 }
+                    ]
+                },
+                options: { 
+                    responsive: true, maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { display: false },
+                        annotation: {
+                            annotations: {
+                                lineUCL: { type: 'line', xMin: getCatPos(uclX), xMax: getCatPos(uclX), borderColor: '#dc2626', borderWidth: 2, borderDash: [5,5], label: { display: true, content: 'UCL', position: 'start', backgroundColor: '#dc2626', color: '#fff', font: {size: 10}, yAdjust: 0 } },
+                                lineLCL: { type: 'line', xMin: getCatPos(lclX), xMax: getCatPos(lclX), borderColor: '#dc2626', borderWidth: 2, borderDash: [5,5], label: { display: true, content: 'LCL', position: 'start', backgroundColor: '#dc2626', color: '#fff', font: {size: 10}, yAdjust: 20 } },
+                                lineCL: { type: 'line', xMin: getCatPos(meanX), xMax: getCatPos(meanX), borderColor: '#16a34a', borderWidth: 2, label: { display: true, content: 'CL', position: 'start', backgroundColor: '#16a34a', color: '#fff', font: {size: 10}, yAdjust: 40 } }
+                            }
+                        }
+                    }, 
+                    layout: { padding: { top: 20 } }, scales: { x: { ticks: { font: {size: 9} } } } 
+                }
+            });
+            activeChemCharts.push(chartHist);
+
+        } 
+        // 🟢 กรณีเลือกหลายค่า (>1): โชว์ Multi-Variate (X-bar & R Style)
+        else {
+            let wrapper = document.createElement('div'); 
+            wrapper.className = 'w-full bg-white border border-gray-300 rounded shadow-md flex flex-col mb-4 overflow-hidden flex-shrink-0'; 
+            wrapper.innerHTML = `
+                <div class="bg-indigo-900 text-white font-bold py-2 px-4 text-sm uppercase flex justify-between"><span>📊 Multi-Variate (X-bar & R Style)</span></div>
+                <div class="p-4 grid grid-cols-1 gap-6 bg-gray-50">
+                    <div class="w-full h-[300px] bg-white relative border border-gray-300 rounded p-2 shadow-sm">
+                        <div class="absolute top-1 w-full text-center text-xs font-bold text-gray-800 z-10">Value Correlation Chart (X-bar Style)</div>
+                        <canvas id="multiXChart"></canvas>
+                    </div>
+                    <div class="w-full h-[250px] bg-white relative border border-gray-300 rounded p-2 shadow-sm">
+                        <div class="absolute top-1 w-full text-center text-xs font-bold text-gray-800 z-10">Moving Range Variation (R Style)</div>
+                        <canvas id="multiRChart"></canvas>
+                    </div>
+                </div>`; 
+            container.appendChild(wrapper); 
+
+            let datasetsX = []; let datasetsR = [];
+            let yAxesConfigX = {}; let yAxesConfigR = {};
+
+            elements.forEach((el, index) => {
+                let elLower = el.toLowerCase();
+                let pts = sortedData.map(r => { let v = parseFloat(String(r[`${elLower}_val`]).replace('<','')); return isNaN(v) ? 0 : v; });
+                let mr = [null]; for(let i=1; i<n; i++) { mr.push(Math.abs(pts[i] - pts[i-1])); }
+                
+                let color = elementColors[elLower] || '#000000';
+                let axisId = `y${index}`;
+
+                datasetsX.push({ label: `${el.toUpperCase()}`, data: pts, borderColor: color, backgroundColor: color, borderWidth: 2, pointRadius: 3, yAxisID: axisId });
+                yAxesConfigX[axisId] = { type: 'linear', display: true, position: index % 2 === 0 ? 'left' : 'right', title: { display: true, text: el.toUpperCase(), color: color, font: { size: 10, weight: 'bold' } }, grid: { drawOnChartArea: index === 0 } };
+
+                datasetsR.push({ label: `MR of ${el.toUpperCase()}`, data: mr, borderColor: color, backgroundColor: color, borderWidth: 1.5, pointRadius: 2, borderDash: [4, 4], spanGaps: true, yAxisID: axisId });
+                yAxesConfigR[axisId] = { type: 'linear', display: true, position: index % 2 === 0 ? 'left' : 'right', grid: { drawOnChartArea: index === 0 } };
+            });
+
+            let combinedXChart = new Chart(document.getElementById('multiXChart').getContext('2d'), {
+                type: 'line', data: { labels: labels, datasets: datasetsX },
+                options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 20 } }, plugins: { legend: { position: 'bottom' }, tooltip: { mode: 'index', intersect: false } }, scales: { x: { ticks: { font: { size: 10 } } }, ...yAxesConfigX }, interaction: { mode: 'nearest', axis: 'x', intersect: false } }
+            });
+            activeChemCharts.push(combinedXChart);
+
+            let combinedRChart = new Chart(document.getElementById('multiRChart').getContext('2d'), {
+                type: 'line', data: { labels: labels, datasets: datasetsR },
+                options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 20 } }, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } }, scales: { x: { display: false }, ...yAxesConfigR }, interaction: { mode: 'nearest', axis: 'x', intersect: false } }
+            });
+            activeChemCharts.push(combinedRChart);
+        }
+    }
+  </script>
+</body>
+</html>
