@@ -450,7 +450,7 @@
     // Core Functions
     // ==========================================
     function showPage(pageId) { document.querySelectorAll('main > div').forEach(d => d.classList.add('hidden-page')); document.getElementById(pageId).classList.remove('hidden-page'); }
-    function apiCall(action, payload) { return fetch('api.php?action=' + action, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).then(response => { if (!response.ok) throw new Error('Network error'); return response.json(); }).catch(error => { return { success: false, message: "เชื่อมต่อฐานข้อมูลไม่ได้" }; }); }
+    function apiCall(action, payload) { return fetch('https://senior-project-pcs.lovestoblog.com/api.php?action=' + action, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).then(response => { if (!response.ok) throw new Error('Network error'); return response.json(); }).catch(error => { return { success: false, message: "เชื่อมต่อฐานข้อมูลไม่ได้" }; }); }
 
     function initDropdowns() {
       let allPartNos = []; Object.values(formGroups).forEach(arr => allPartNos = allPartNos.concat(arr));
@@ -606,7 +606,7 @@
     // ==========================================
     // Upload CSV & Clear Chemistry Data
     // ==========================================
-    function uploadCsvFile() { const fileInput = document.getElementById('csvFileInput'); if (!fileInput.files.length) return Swal.fire('แจ้งเตือน', 'กรุณาเลือกไฟล์', 'warning'); const formData = new FormData(); formData.append('csv_file', fileInput.files[0]); Swal.fire({ title: 'กำลังนำเข้า...', didOpen: () => Swal.showLoading() }); fetch('api.php?action=upload_csv', { method: 'POST', body: formData }).then(r => r.json()).then(res => { if(res.success) { Swal.fire('สำเร็จ!', res.message, 'success').then(() => { fileInput.value = ''; openChemistryTable(); }); } else { Swal.fire('ผิดพลาด', res.message, 'error'); } }).catch(err => Swal.fire('Error', 'อัปโหลดไม่สำเร็จ', 'error')); }
+    function uploadCsvFile() { const fileInput = document.getElementById('csvFileInput'); if (!fileInput.files.length) return Swal.fire('แจ้งเตือน', 'กรุณาเลือกไฟล์', 'warning'); const formData = new FormData(); formData.append('csv_file', fileInput.files[0]); Swal.fire({ title: 'กำลังนำเข้า...', didOpen: () => Swal.showLoading() }); fetch('https://senior-project-pcs.lovestoblog.com/api.php?action=upload_csv', { method: 'POST', body: formData }).then(r => r.json()).then(res => { if(res.success) { Swal.fire('สำเร็จ!', res.message, 'success').then(() => { fileInput.value = ''; openChemistryTable(); }); } else { Swal.fire('ผิดพลาด', res.message, 'error'); } }).catch(err => Swal.fire('Error', 'อัปโหลดไม่สำเร็จ', 'error')); }
     function clearChemistryData() { Swal.fire({ title: 'ยืนยันการล้างข้อมูล?', text: "ข้อมูลเคมีจากเครื่อง Spectrometer ที่เคยอัปโหลดไว้ทั้งหมดจะถูกลบทิ้งถาวร!", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6', confirmButtonText: 'ใช่, ล้างข้อมูลเลย', cancelButtonText: 'ยกเลิก' }).then((result) => { if (result.isConfirmed) { Swal.fire({ title: 'กำลังล้างข้อมูล...', didOpen: () => Swal.showLoading() }); apiCall('clear_chemistry_data', {}).then(res => { if(res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); } else { Swal.fire('ผิดพลาด', res.message, 'error'); } }); } }); }
 
     // ==========================================
